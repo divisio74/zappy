@@ -1,0 +1,20 @@
+rapelle pour moi-meme(pierre B)
+
+The food the Trantorians collect is the only resource they need to survive.
+One unit of food allows them to live for 126 time units.
+
+PHASE 1 — dispersée (solo + duos), broadcast MINIMAL
+  • fork pour atteindre 6 joueurs, répartis en 3 paires (1-2, 3-4, 5-6)
+  • paires explorent loin, DANS LA MÊME DIRECTION (reunitables)
+  • 1→2 : SOLO (aucun broadcast)
+  • 2→3 : en DUOS (3 paires en //) → 3×2 rentable ici (recette cheap)
+  • 3→4 : DUOS POSSIBLE (2 joueurs suffisent) MAIS recette ×3 chère
+          → arbitrage : duos OU déjà regrouper. ("pas si nécessaire" = OK)
+  • broadcast seulement pour réunir les duos
+
+PHASE 2 — regroupée (rassemblements), broadcast ACTIF
+  • début : à partir du 4→5 (premier palier ≥4 joueurs)
+  • mise en commun via broadcast + compteur distribué
+  • rally sur la BALISE = joueur id le plus petit (homing sur direction K)
+  • 4→5, 5→6 (≥4) puis 6→7, 7→8 (6) → rassemblement à 6, 1 recette, ALL RISE
+  • jusqu'au niveau 8
