@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cstddef>
-#include <string>
-#include <sys/un.h>
+#include <cstdint>
+#include <netinet/in.h>
 #include <vector>
 
 #include "network/ClientSocket.hpp"
@@ -14,7 +14,7 @@ public:
         Reciprocal
     };
 
-    explicit ServerSocket(const std::string &path, ConnectionType type = ConnectionType::Reciprocal);
+    explicit ServerSocket(std::uint16_t port, ConnectionType type = ConnectionType::Reciprocal);
     ~ServerSocket();
 
     ServerSocket(const ServerSocket &) = delete;
@@ -29,10 +29,9 @@ public:
 
 private:
     static int toNativeType(ConnectionType type);
-    static sockaddr_un makeAddress(const std::string &path);
+    static sockaddr_in makeAddress(std::uint16_t port);
     void closeSocket();
 
     IOSocket _ioSocket;
-    std::string _path;
     bool _connected;
 };

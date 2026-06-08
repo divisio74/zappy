@@ -1,15 +1,17 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
-#include <sys/un.h>
+#include <netinet/in.h>
 #include <vector>
 
 #include "network/IOSocket.hpp"
 
 class ClientSocket {
 public:
-    explicit ClientSocket(const std::string &path);
+    explicit ClientSocket(std::uint16_t port);
+    ClientSocket(const std::string &host, std::uint16_t port);
     ~ClientSocket();
 
     ClientSocket(const ClientSocket &) = delete;
@@ -23,7 +25,7 @@ public:
 
 private:
     explicit ClientSocket(int fd);
-    static sockaddr_un makeAddress(const std::string &path);
+    static sockaddr_in makeAddress(const std::string &host, std::uint16_t port);
     void closeSocket();
 
     IOSocket _ioSocket;

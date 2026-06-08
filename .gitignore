@@ -1,0 +1,31 @@
+# Build outputs
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+zappy_server
+
+# Debug and coverage files
+*.gcda
+*.gcno
+*.gcov
+vgcore.*
+core
+core.*
+
+# CMake / generated build directories
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+build/
+
+# Editor and OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store

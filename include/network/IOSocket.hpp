@@ -9,7 +9,7 @@
  *
  * IOSocket exposes command-based reads and writes for the project protocol.
  * Public callers work with plain commands such as "STATUS" or "ORDER 1 2 3".
- * The "\r\n" network delimiter is handled internally.
+ * The "\n" command delimiter is handled internally.
  *
  * IOSocket does not own the file descriptor. The socket class that created the
  * fd is responsible for closing it.
@@ -31,7 +31,7 @@ public:
     /**
      * Reads available bytes and returns every complete command found.
      *
-     * Commands are returned without the trailing "\r\n".
+     * Commands are returned without the trailing "\n".
      * If no complete command is available yet, returns an empty vector and
      * keeps the partial data for the next read().
      *
@@ -43,8 +43,8 @@ public:
     /**
      * Writes one command to the socket.
      *
-     * Callers should pass the command without "\r\n"; IOSocket appends it
-     * automatically. Passing a command that already ends with "\r\n" is also
+     * Callers should pass the command without "\n"; IOSocket appends it
+     * automatically. Passing a command that already ends with "\n" is also
      * accepted and will not duplicate the delimiter.
      */
     void write(const std::string &message) const;

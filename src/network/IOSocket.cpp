@@ -44,16 +44,11 @@ std::vector<std::string> IOSocket::read(std::size_t size)
     currentOperation = _buffer;
 
     for (std::size_t i = 0; i < buffer.size(); i++) {
-        if (!currentOperation.empty() && currentOperation.back() == '\r' && buffer[i] == '\n') {
-            currentOperation.pop_back();
+        if (buffer[i] == '\n') {
+            if (!currentOperation.empty() && currentOperation.back() == '\r')
+                currentOperation.pop_back();
             commands.push_back(currentOperation);
             currentOperation.clear();
-            continue;
-        }
-        if (buffer[i] == '\r' && i + 1 < buffer.size() && buffer[i + 1] == '\n') {
-            commands.push_back(currentOperation);
-            currentOperation.clear();
-            i += 1;
             continue;
         }
         if (currentOperation.size() + 1 < 1024)
@@ -68,8 +63,8 @@ void IOSocket::write(const std::string &message) const
     std::size_t total = 0;
     std::string command = message;
 
-    if (command.size() < 2 || command.substr(command.size() - 2) != "\r\n")
-        command += "\r\n";
+    if (command.empty() || command.back() != '\n')
+        command += "\n";
     while (total < command.size()) {
         ssize_t bytesWritten = ::send(_fd, command.data() + total, command.size() - total, MSG_NOSIGNAL);
 

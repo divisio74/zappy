@@ -16,35 +16,36 @@ int ServerSocket::toNativeType(ServerSocket::ConnectionType type)
     return SOCK_STREAM;
 }
 
-sockaddr_un ServerSocket::makeAddress(const std::string &path)
+sockaddr_in ServerSocket::makeAddress(std::uint16_t port)
 {
-    sockaddr_un address{};
+    sockaddr_in address{};
 
-    if (path.size() >= sizeof(address.sun_path))
-        throw std::runtime_error("socket path is too long");
-    address.sun_family = AF_UNIX;
-    std::strncpy(address.sun_path, path.c_str(), sizeof(address.sun_path) - 1);
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = htonl(INADDR_ANY);
+    address.sin_port = htons(port);
     return address;
 }
 
-ServerSocket::ServerSocket(const std::string &path, ConnectionType type)
-    : _ioSocket(::socket(AF_UNIX, ServerSocket::toNativeType(type), 0)),
-      _path(path),
+ServerSocket::ServerSocket(std::uint16_t port, ConnectionType type)
+    : _ioSocket(::socket(AF_INET, ServerSocket::toNativeType(type), 0)),
       _connected(false)
 {
     if (_ioSocket.getFd() == -1)
         throw std::runtime_error(std::strerror(errno));
 
-    sockaddr_un address = ServerSocket::makeAddress(path);
+    int reuse = 1;
+    sockaddr_in address = ServerSocket::makeAddress(port);
 
-    ::unlink(path.c_str());
+    if (::setsockopt(_ioSocket.getFd(), SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) == -1) {
+        closeSocket();
+        throw std::runtime_error(std::strerror(errno));
+    }
     if (::bind(_ioSocket.getFd(), reinterpret_cast<sockaddr *>(&address), sizeof(address)) == -1) {
         closeSocket();
         throw std::runtime_error(std::strerror(errno));
     }
     if (::listen(_ioSocket.getFd(), 128) == -1) {
         closeSocket();
-        ::unlink(_path.c_str());
         throw std::runtime_error(std::strerror(errno));
     }
 }
@@ -52,28 +53,20 @@ ServerSocket::ServerSocket(const std::string &path, ConnectionType type)
 ServerSocket::~ServerSocket()
 {
     closeSocket();
-    if (!_path.empty())
-        ::unlink(_path.c_str());
 }
 
 ServerSocket::ServerSocket(ServerSocket &&other)
     : _ioSocket(std::move(other._ioSocket)),
-      _path(std::move(other._path)),
       _connected(std::exchange(other._connected, false))
 {
-    other._path.clear();
 }
 
 ServerSocket &ServerSocket::operator=(ServerSocket &&other)
 {
     if (this != &other) {
         closeSocket();
-        if (!_path.empty())
-            ::unlink(_path.c_str());
         _ioSocket = std::move(other._ioSocket);
-        _path = std::move(other._path);
         _connected = std::exchange(other._connected, false);
-        other._path.clear();
     }
     return *this;
 }

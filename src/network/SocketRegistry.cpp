@@ -1,24 +1,21 @@
 #include "network/SocketRegistry.hpp"
 
-#include <filesystem>
 #include <poll.h>
 #include <stdexcept>
 
-SocketRegistry::SocketRegistry(const std::string &directory)
-    : _directory(directory)
+SocketRegistry::SocketRegistry()
 {
     _fds.fill(-1);
-    std::filesystem::create_directories(_directory);
 }
 
-void SocketRegistry::addSocket(std::size_t id, const std::string &path)
+void SocketRegistry::addSocket(std::size_t id, std::uint16_t port)
 {
     if (_sockets.size() >= MaxSockets)
         throw std::runtime_error("maximum number of server sockets reached");
     if (_indexById.contains(id))
         throw std::runtime_error("server socket id already exists");
 
-    _sockets.push_back({id, ServerSocket(path)});
+    _sockets.push_back({id, ServerSocket(port)});
     refreshFds();
 }
 

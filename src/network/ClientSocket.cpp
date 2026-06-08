@@ -3,28 +3,41 @@
 #include <cerrno>
 #include <cstring>
 #include <stdexcept>
+#include <arpa/inet.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <utility>
 
-sockaddr_un ClientSocket::makeAddress(const std::string &path)
+sockaddr_in ClientSocket::makeAddress(const std::string &host, std::uint16_t port)
 {
-    sockaddr_un address{};
+    sockaddr_in address{};
 
-    if (path.size() >= sizeof(address.sun_path))
-        throw std::runtime_error("socket path is too long");
-    address.sun_family = AF_UNIX;
-    std::strncpy(address.sun_path, path.c_str(), sizeof(address.sun_path) - 1);
+    address.sin_family = AF_INET;
+    address.sin_port = htons(port);
+    if (::inet_pton(AF_INET, host.c_str(), &address.sin_addr) != 1)
+        throw std::runtime_error("invalid IPv4 address");
     return address;
 }
 
-ClientSocket::ClientSocket(const std::string &path)
-    : _ioSocket(::socket(AF_UNIX, SOCK_STREAM, 0))
+ClientSocket::ClientSocket(std::uint16_t port)
+    : ClientSocket("127.0.0.1", port)
+{
+}
+
+ClientSocket::ClientSocket(const std::string &host, std::uint16_t port)
+    : _ioSocket(::socket(AF_INET, SOCK_STREAM, 0))
 {
     if (_ioSocket.getFd() == -1)
         throw std::runtime_error(std::strerror(errno));
 
-    sockaddr_un address = ClientSocket::makeAddress(path);
+    sockaddr_in address{};
+
+    try {
+        address = ClientSocket::makeAddress(host, port);
+    } catch (const std::runtime_error &) {
+        closeSocket();
+        throw;
+    }
 
     if (::connect(_ioSocket.getFd(), reinterpret_cast<sockaddr *>(&address), sizeof(address)) == -1) {
         closeSocket();
