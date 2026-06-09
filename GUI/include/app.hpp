@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SFML/Graphics.hpp>
+#include "renderer.hpp"
 
 class App {
     public:
@@ -10,6 +10,5 @@ class App {
         void run();
 
     private:
-        sf::VideoMode _videoMode;
-        sf::RenderWindow _renderWindow;
+        Renderer _renderer;
 };

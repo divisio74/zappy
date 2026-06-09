@@ -1,0 +1,31 @@
+#pragma once
+
+#include <GL/glew.h>
+#include <SFML/Window.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <fstream>
+#include <sstream>
+#include <iostream>
+
+class Renderer {
+    public:
+        Renderer();
+        ~Renderer() = default;
+
+        void init();
+
+        const sf::VideoMode& getVideoMode() const;
+        const sf::Window&    getWindow()    const;
+        sf::Window&          getWindow();
+
+    private:
+        sf::VideoMode       _videoMode;
+        sf::ContextSettings _settings;
+        sf::Window          _window;
+        GLuint              _shader;
+
+        GLuint _compileShader(GLenum type, const std::string& path);
+        GLuint _createProgram(const std::string& vertPath, const std::string& fragPath);
+};
