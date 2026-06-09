@@ -1,30 +1,32 @@
 #pragma once
 
-#include <array>
 #include <cstddef>
+#include <cstdint>
+#include <string>
 #include <vector>
 
-#include "core/Player.hpp"
-#include "core/Ressource.hpp"
-#include "core/Tile.hpp"
+#include "core/handlers/AiHandler.hpp"
+#include "core/handlers/GuiHandler.hpp"
+#include "core/world/WorldData.hpp"
+#include "network/SocketRegistry.hpp"
 
 class Core {
 public:
-    static constexpr std::size_t DefaultMapWidth = 10;
-    static constexpr std::size_t DefaultMapHeight = 10;
-    using Map = std::array<std::array<Tile, DefaultMapWidth>, DefaultMapHeight>;
+    Core();
+    Core(std::uint16_t port, std::size_t width, std::size_t height,
+        const std::vector<std::string> &teamNames, std::size_t clientsNb,
+        std::size_t frequency);
 
-    Core() = default;
-
-    Map &getMap();
-    const Map &getMap() const;
-    std::vector<Player> &getPlayers();
-    const std::vector<Player> &getPlayers() const;
-    std::vector<Ressource> &getRessources();
-    const std::vector<Ressource> &getRessources() const;
+    WorldData &getWorldData();
+    const WorldData &getWorldData() const;
+    SocketRegistry &getSocketRegistry();
+    const SocketRegistry &getSocketRegistry() const;
+    GuiHandler &getGuiHandler();
+    AiHandler &getAiHandler();
 
 private:
-    Map _map;
-    std::vector<Player> _players;
-    std::vector<Ressource> _ressources;
+    WorldData _worldData;
+    SocketRegistry _socketRegistry;
+    GuiHandler _guiHandler;
+    AiHandler _aiHandler;
 };

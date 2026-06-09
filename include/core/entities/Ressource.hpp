@@ -2,8 +2,8 @@
 
 #include <cstddef>
 
-#include "core/ResourceType.hpp"
-#include "core/Vector2.hpp"
+#include "core/types/ResourceType.hpp"
+#include "core/types/Vector2.hpp"
 
 class Ressource {
 public:

@@ -1,4 +1,4 @@
-#include "core/Ressource.hpp"
+#include "core/entities/Ressource.hpp"
 
 Ressource::Ressource(Vector2 coordinate, ResourceType type, std::size_t id)
     : _coordinate(coordinate), _type(type), _id(id)

@@ -12,7 +12,7 @@ zappy_server
 *.gcno
 *.gcov
 vgcore.*
-core
+/core
 core.*
 
 # CMake / generated build directories

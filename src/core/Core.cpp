@@ -1,31 +1,51 @@
 #include "core/Core.hpp"
 
-Core::Map &Core::getMap()
+Core::Core()
+    : _guiHandler(_worldData),
+      _aiHandler(_worldData)
 {
-    return _map;
 }
 
-const Core::Map &Core::getMap() const
+Core::Core(std::uint16_t port, std::size_t width, std::size_t height,
+    const std::vector<std::string> &teamNames, std::size_t clientsNb,
+    std::size_t frequency)
+    : _guiHandler(_worldData),
+      _aiHandler(_worldData)
 {
-    return _map;
+    static_cast<void>(port);
+    static_cast<void>(width);
+    static_cast<void>(height);
+    static_cast<void>(teamNames);
+    static_cast<void>(clientsNb);
+    static_cast<void>(frequency);
 }
 
-std::vector<Player> &Core::getPlayers()
+WorldData &Core::getWorldData()
 {
-    return _players;
+    return _worldData;
 }
 
-const std::vector<Player> &Core::getPlayers() const
+const WorldData &Core::getWorldData() const
 {
-    return _players;
+    return _worldData;
 }
 
-std::vector<Ressource> &Core::getRessources()
+SocketRegistry &Core::getSocketRegistry()
 {
-    return _ressources;
+    return _socketRegistry;
 }
 
-const std::vector<Ressource> &Core::getRessources() const
+const SocketRegistry &Core::getSocketRegistry() const
 {
-    return _ressources;
+    return _socketRegistry;
+}
+
+GuiHandler &Core::getGuiHandler()
+{
+    return _guiHandler;
+}
+
+AiHandler &Core::getAiHandler()
+{
+    return _aiHandler;
 }
