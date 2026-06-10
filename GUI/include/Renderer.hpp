@@ -9,22 +9,29 @@
 #include <sstream>
 #include <iostream>
 
+#include "Camera.hpp"
+
 class Renderer {
     public:
         Renderer();
         ~Renderer() = default;
 
         void init();
+        void render();
 
         const sf::VideoMode& getVideoMode() const;
-        const sf::Window&    getWindow()    const;
-        sf::Window&          getWindow();
+        const sf::Window&    getWindow   () const;
+        sf::Window&          getWindow   ();
 
     private:
         sf::VideoMode       _videoMode;
         sf::ContextSettings _settings;
         sf::Window          _window;
+        Camera              _camera;
         GLuint              _shader;
+        GLuint              _VAO;
+        GLuint              _VBO;
+        GLuint              _EBO;
 
         GLuint _compileShader(GLenum type, const std::string& path);
         GLuint _createProgram(const std::string& vertPath, const std::string& fragPath);

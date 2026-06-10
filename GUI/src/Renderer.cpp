@@ -1,4 +1,4 @@
-#include "renderer.hpp"
+#include "Renderer.hpp"
 
 Renderer::Renderer()
 {
@@ -22,9 +22,51 @@ void Renderer::init()
     glEnable(GL_DEPTH_TEST);
 
     _shader = _createProgram("shaders/vertex.glsl", "shaders/fragment.glsl");
-    GLuint _VAO;
-    GLuint _VBO;
-    GLuint _EBO;
+
+    //Doc : https://learnopengl.com/Getting-started/Hello-Triangle#:~:text=Vertex%20input
+
+    float vertices[] = {
+        -3.f, 0.f, -2.f,
+         3.f, 0.f, -2.f,
+         3.f, 0.f,  2.f,
+        -3.f, 0.f,  2.f,
+    };
+
+    unsigned int indices[] = { 0,1,2, 2,3,0 };
+
+    glGenVertexArrays(1, &_VAO);
+    glGenBuffers(1, &_VBO);
+    glGenBuffers(1, &_EBO);
+
+    glBindVertexArray(_VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, _VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glBindVertexArray(0);
+}
+
+void Renderer::render()
+{
+    glUseProgram(_shader);
+
+    glm::mat4 model      = glm::mat4(1.f);
+    glm::mat4 view       = _camera.getView();
+    glm::mat4 projection = glm::perspective(glm::radians(45.f),
+                           800.f / 600.f, 0.1f, 100.f);
+
+    glUniformMatrix4fv(glGetUniformLocation(_shader, "model"),      1, GL_FALSE, glm::value_ptr(model));
+    glUniformMatrix4fv(glGetUniformLocation(_shader, "view"),       1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(glGetUniformLocation(_shader, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    glUniform3f(glGetUniformLocation(_shader, "color"), 0.2f, 0.6f, 0.3f);
+
+    glBindVertexArray(_VAO);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
 GLuint Renderer::_compileShader(GLenum type, const std::string& path)

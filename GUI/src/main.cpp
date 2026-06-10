@@ -5,7 +5,7 @@
 ** main.cpp
 */
 
-#include "../include/app.hpp"
+#include "App.hpp"
 
 int main()
 {
