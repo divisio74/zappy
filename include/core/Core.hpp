@@ -23,10 +23,12 @@ public:
     const SocketRegistry &getSocketRegistry() const;
     GuiHandler &getGuiHandler();
     AiHandler &getAiHandler();
+    void dispatchige();
 
 private:
     WorldData _worldData;
     SocketRegistry _socketRegistry;
     GuiHandler _guiHandler;
     AiHandler _aiHandler;
+    std::size_t _nextSocketId;
 };

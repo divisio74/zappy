@@ -3,23 +3,26 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "network/ClientSocket.hpp"
 #include "network/ServerSocket.hpp"
 
 /**
- * Manages several one-to-one server sockets behind stable ids.
+ * Manages one listening server socket and several connected clients.
  *
- * SocketRegistry is a small network manager: callers choose the socket id and
- * the TCP port, then use that same id for every operation.
+ * SocketRegistry is a small network manager: callers create one TCP listening
+ * socket, then assign stable ids to each accepted client connection.
  *
  * Typical flow:
- * - addSocket(id, port) creates the server socket on port.
- * - the child process/client receives port and connects to it.
- * - acceptConnection(id) accepts that connection.
- * - pollSockets() returns the ids of sockets that have data waiting.
+ * - addServerSocket(port) creates the listening server socket on port.
+ * - pollSockets() updates whether a new client can be accepted and returns the
+ *   ids of client sockets that have data waiting.
+ * - hasPendingConnection() tells whether acceptConnection(id) can be called.
+ * - acceptConnection(id) accepts the new client and stores it behind id.
  * - getLostConnections() returns and removes sockets whose client disconnected.
  * - read(id) returns complete protocol commands from that socket.
  * - write(id, command) sends one protocol command to that socket.
@@ -27,9 +30,9 @@
  * Commands passed to write() and returned by read() do not include the "\n"
  * delimiter. The delimiter is handled by the socket I/O layer.
  *
- * The caller does not need to keep file descriptors or vector indexes. The id
- * is the public handle, which makes it easy to keep a matching business object
- * such as KitchenState in another container.
+ * The caller does not need to keep file descriptors or vector indexes. Client
+ * ids are the public handles, which makes it easy to keep matching business
+ * objects in another container.
  */
 class SocketRegistry {
 public:
@@ -38,18 +41,22 @@ public:
     SocketRegistry();
 
     /**
-     * Creates a server socket for an externally chosen id and TCP port.
+     * Creates the listening server socket on a TCP port.
      *
-     * The id must be unique while the socket is registered. The port is usually
-     * given to the process that will create the matching ClientSocket.
+     * Only one server socket can listen in a registry. Connected clients are
+     * added with acceptConnection(id).
      */
-    void addSocket(std::size_t id, std::uint16_t port);
+    void addServerSocket(std::uint16_t port);
 
     /**
-     * Accepts the client connection for the socket identified by id.
+     * Returns true if pollSockets() detected a client waiting to be accepted.
+     */
+    bool hasPendingConnection() const;
+
+    /**
+     * Accepts a new client connection and stores it behind id.
      *
-     * Call this after the matching client process has been started and is ready
-     * to connect.
+     * The id must be unique while the client is registered.
      */
     void acceptConnection(std::size_t id);
 
@@ -61,11 +68,12 @@ public:
     void removeSocket(std::size_t id);
 
     /**
-     * Returns the ids of sockets that can be read immediately.
+     * Returns the ids of client sockets that can be read immediately.
      *
-     * This call is non-blocking. It returns an empty vector if no socket has data
-     * waiting. Sockets with a closed or invalid connection are kept aside and can
-     * be collected with getLostConnections().
+     * This call is non-blocking. It also updates hasPendingConnection() when
+     * the listening socket can accept a new client. Sockets with a closed or
+     * invalid connection are kept aside and can be collected with
+     * getLostConnections().
      */
     std::vector<std::size_t> pollSockets();
 
@@ -98,21 +106,23 @@ public:
     void write(std::size_t id, const std::string &message);
 
     /**
-     * Returns the number of registered server sockets.
+     * Returns the number of registered client sockets.
      */
     std::size_t size() const;
 
 private:
     struct SocketEntry {
         std::size_t id;
-        ServerSocket socket;
+        ClientSocket socket;
     };
 
+    std::optional<ServerSocket> _serverSocket;
     std::vector<SocketEntry> _sockets;
     std::array<int, MaxSockets> _fds;
     std::unordered_map<std::size_t, std::size_t> _indexById;
     std::unordered_map<int, std::size_t> _idByFd;
     std::vector<std::size_t> _lostConnections;
+    bool _hasPendingConnection;
 
     std::size_t getIndex(std::size_t id) const;
     void markLostConnection(std::size_t id);

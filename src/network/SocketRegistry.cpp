@@ -4,26 +4,35 @@
 #include <stdexcept>
 
 SocketRegistry::SocketRegistry()
+    : _hasPendingConnection(false)
 {
     _fds.fill(-1);
 }
 
-void SocketRegistry::addSocket(std::size_t id, std::uint16_t port)
+void SocketRegistry::addServerSocket(std::uint16_t port)
 {
-    if (_sockets.size() >= MaxSockets)
-        throw std::runtime_error("maximum number of server sockets reached");
-    if (_indexById.contains(id))
-        throw std::runtime_error("server socket id already exists");
+    if (_serverSocket.has_value())
+        throw std::runtime_error("server socket already exists");
 
-    _sockets.push_back({id, ServerSocket(port)});
-    refreshFds();
+    _serverSocket.emplace(port);
+}
+
+bool SocketRegistry::hasPendingConnection() const
+{
+    return _hasPendingConnection;
 }
 
 void SocketRegistry::acceptConnection(std::size_t id)
 {
-    std::size_t index = getIndex(id);
+    if (!_serverSocket.has_value())
+        throw std::runtime_error("server socket is not listening");
+    if (_sockets.size() >= MaxSockets)
+        throw std::runtime_error("maximum number of client sockets reached");
+    if (_indexById.contains(id))
+        throw std::runtime_error("client socket id already exists");
 
-    _sockets[index].socket.acceptConnection();
+    _sockets.push_back({id, _serverSocket->acceptConnection()});
+    _hasPendingConnection = false;
     refreshFds();
 }
 
@@ -37,17 +46,25 @@ void SocketRegistry::removeSocket(std::size_t id)
 
 std::vector<std::size_t> SocketRegistry::pollSockets()
 {
-    std::array<pollfd, MaxSockets> pollFds{};
+    std::vector<pollfd> pollFds;
     std::vector<std::size_t> readyIds;
+    std::size_t clientOffset = 0;
 
-    for (std::size_t i = 0; i < MaxSockets; ++i) {
-        pollFds[i].fd = _fds[i];
-        pollFds[i].events = POLLIN;
-        pollFds[i].revents = 0;
+    _hasPendingConnection = false;
+    if (_serverSocket.has_value()) {
+        pollFds.push_back({_serverSocket->getFd(), POLLIN, 0});
+        clientOffset = 1;
     }
+    for (std::size_t i = 0; i < _sockets.size(); ++i)
+        pollFds.push_back({_fds[i], POLLIN, 0});
+    if (pollFds.empty())
+        return readyIds;
     if (::poll(pollFds.data(), pollFds.size(), 0) == -1)
         throw std::runtime_error("poll failed");
-    for (std::size_t i = 0; i < MaxSockets; ++i) {
+    if (_serverSocket.has_value() && pollFds[0].fd != -1
+        && (pollFds[0].revents & POLLIN))
+        _hasPendingConnection = true;
+    for (std::size_t i = clientOffset; i < pollFds.size(); ++i) {
         if (pollFds[i].fd == -1)
             continue;
 

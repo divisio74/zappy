@@ -27,8 +27,7 @@ sockaddr_in ServerSocket::makeAddress(std::uint16_t port)
 }
 
 ServerSocket::ServerSocket(std::uint16_t port, ConnectionType type)
-    : _ioSocket(::socket(AF_INET, ServerSocket::toNativeType(type), 0)),
-      _connected(false)
+    : _ioSocket(::socket(AF_INET, ServerSocket::toNativeType(type), 0))
 {
     if (_ioSocket.getFd() == -1)
         throw std::runtime_error(std::strerror(errno));
@@ -56,8 +55,7 @@ ServerSocket::~ServerSocket()
 }
 
 ServerSocket::ServerSocket(ServerSocket &&other)
-    : _ioSocket(std::move(other._ioSocket)),
-      _connected(std::exchange(other._connected, false))
+    : _ioSocket(std::move(other._ioSocket))
 {
 }
 
@@ -66,34 +64,17 @@ ServerSocket &ServerSocket::operator=(ServerSocket &&other)
     if (this != &other) {
         closeSocket();
         _ioSocket = std::move(other._ioSocket);
-        _connected = std::exchange(other._connected, false);
     }
     return *this;
 }
 
-void ServerSocket::acceptConnection()
+ClientSocket ServerSocket::acceptConnection()
 {
     int clientFd = ::accept(_ioSocket.getFd(), nullptr, nullptr);
 
     if (clientFd == -1)
         throw std::runtime_error(std::strerror(errno));
-    closeSocket();
-    _ioSocket.setFd(clientFd);
-    _connected = true;
-}
-
-std::vector<std::string> ServerSocket::read(std::size_t size)
-{
-    if (!_connected)
-        throw std::runtime_error("server socket is not connected");
-    return _ioSocket.read(size);
-}
-
-void ServerSocket::write(const std::string &message) const
-{
-    if (!_connected)
-        throw std::runtime_error("server socket is not connected");
-    _ioSocket.write(message);
+    return ClientSocket(clientFd);
 }
 
 int ServerSocket::getFd() const

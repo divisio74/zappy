@@ -22,9 +22,7 @@ public:
     ServerSocket(ServerSocket &&other);
     ServerSocket &operator=(ServerSocket &&other);
 
-    void acceptConnection();
-    std::vector<std::string> read(std::size_t size = 4096);
-    void write(const std::string &message) const;
+    ClientSocket acceptConnection();
     int getFd() const;
 
 private:
@@ -33,5 +31,4 @@ private:
     void closeSocket();
 
     IOSocket _ioSocket;
-    bool _connected;
 };

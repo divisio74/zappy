@@ -2,7 +2,8 @@
 
 Core::Core()
     : _guiHandler(_worldData),
-      _aiHandler(_worldData)
+      _aiHandler(_worldData),
+      _nextSocketId(0)
 {
 }
 
@@ -10,9 +11,10 @@ Core::Core(std::uint16_t port, std::size_t width, std::size_t height,
     const std::vector<std::string> &teamNames, std::size_t clientsNb,
     std::size_t frequency)
     : _guiHandler(_worldData),
-      _aiHandler(_worldData)
+      _aiHandler(_worldData),
+      _nextSocketId(0)
 {
-    static_cast<void>(port);
+    _socketRegistry.addServerSocket(port);
     static_cast<void>(width);
     static_cast<void>(height);
     static_cast<void>(teamNames);
@@ -48,4 +50,16 @@ GuiHandler &Core::getGuiHandler()
 AiHandler &Core::getAiHandler()
 {
     return _aiHandler;
+}
+
+void Core::dispatchige()
+{
+    _socketRegistry.pollSockets();
+    while (_socketRegistry.hasPendingConnection()) {
+        std::size_t id = _nextSocketId++;
+
+        _socketRegistry.acceptConnection(id);
+        _socketRegistry.write(id, "WELCOM");
+        _socketRegistry.pollSockets();
+    }
 }
