@@ -13,6 +13,9 @@ void App::run()
                 _renderer.getWindow().close();
         }
 
+        float deltaTime = _clock.restart().asSeconds();
+        _renderer.getCamera().processInput(deltaTime);
+
         glClearColor(0.1f, 0.1f, 0.15f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

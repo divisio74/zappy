@@ -22,6 +22,7 @@ class Renderer {
         const sf::VideoMode& getVideoMode() const;
         const sf::Window&    getWindow   () const;
         sf::Window&          getWindow   ();
+        Camera&              getCamera   ();
 
     private:
         sf::VideoMode       _videoMode;

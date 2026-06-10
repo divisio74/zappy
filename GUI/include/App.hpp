@@ -10,5 +10,6 @@ class App {
         void run();
 
     private:
-        Renderer _renderer;
+        Renderer    _renderer;
+        sf::Clock   _clock;
 };

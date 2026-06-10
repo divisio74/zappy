@@ -2,6 +2,7 @@
 
 #include <GL/glew.h>
 #include <SFML/Window.hpp>
+#include <SFML/System.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -14,16 +15,10 @@ class Camera {
 
         glm::mat4 getView() const;
 
-        void processKeyboard(float deltaTime);
-        void processMouse(float offsetX, float offsetY);
+        void processInput(float deltaTime);
 
     private:
         glm::vec3 _position;
-        glm::vec3 _target;
-        glm::vec3 _direction;
+        glm::vec3 _front;
         glm::vec3 _up;
-        glm::vec3 _right;
-        glm::vec3 _cameraUp;
-        glm::mat4 _view;
-        sf::Clock _clock;
 };

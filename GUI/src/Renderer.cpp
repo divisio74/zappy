@@ -112,3 +112,8 @@ sf::Window& Renderer::getWindow()
 {
     return _window;
 }
+
+Camera& Renderer::getCamera()
+{
+    return _camera;
+}
