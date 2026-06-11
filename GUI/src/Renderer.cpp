@@ -15,27 +15,60 @@ Renderer::Renderer()
     _window.setFramerateLimit(60);
 }
 
-void Renderer::init()
+void Renderer::init(uint width, uint height)
 {
     glewExperimental = GL_TRUE;
     glewInit();
     glEnable(GL_DEPTH_TEST);
 
     _shader = _createProgram("shaders/vertex.glsl", "shaders/fragment.glsl");
-
     //Doc : https://learnopengl.com/Getting-started/Hello-Triangle#:~:text=Vertex%20input
 
+    uint Zoffset = 0;
+
+    for (uint y = 0; y < height; y++) {
+        for (uint x = 0; x < width; x++) {
+            initTile(x, y, Zoffset);
+        }
+        Zoffset++;
+    }
+}
+
+void Renderer::render()
+{
+    glUseProgram(_shader);
+
+    glm::mat4 model      = glm::mat4(1.f);
+    glm::mat4 view       = _camera.getView();
+    glm::mat4 projection = glm::perspective(glm::radians(45.f), 800.f / 600.f, 0.1f, 100.f);
+
+    glUniformMatrix4fv(glGetUniformLocation(_shader, "model"),      1, GL_FALSE, glm::value_ptr(model));
+    glUniformMatrix4fv(glGetUniformLocation(_shader, "view"),       1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(glGetUniformLocation(_shader, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+
+    renderMap(WIDTH, HEIGHT);
+}
+
+void Renderer::renderMap(uint width, uint height)
+{
+    for (uint y = 0; y < height; y++)
+        for (uint x = 0; x < width; x++)
+            renderTile(x, y);
+}
+
+void Renderer::initTile(float offsetX, float offsetY, float offsetZ)
+{
     float vertices[] = {
 
-        -3.f, 0.5f, -2.f, 0.f, 0.f,
-         3.f, 0.5f, -2.f, 1.f, 0.f,
-         3.f, 0.5f,  2.f, 1.f, 1.f,
-        -3.f, 0.5f,  2.f, 0.f, 1.f,
+        0.f + offsetX, 0.5f + offsetY, 0.f + offsetZ, 0.f, 0.f,
+        1.f + offsetX, 0.5f + offsetY, 0.f + offsetZ, 1.f, 0.f,
+        1.f + offsetX, 0.5f + offsetY, 1.f + offsetZ, 1.f, 1.f,
+        0.f + offsetX, 0.5f + offsetY, 1.f + offsetZ, 0.f, 1.f,
 
-        -3.f, -0.5f, -2.f, 0.f, 0.f,
-         3.f, -0.5f, -2.f, 1.f, 0.f,
-         3.f, -0.5f,  2.f, 1.f, 1.f,
-        -3.f, -0.5f,  2.f, 0.f, 1.f,
+        0.f + offsetX, -0.5f + offsetY, 0.f + offsetZ, 0.f, 0.f,
+        1.f + offsetX, -0.5f + offsetY, 0.f + offsetZ, 1.f, 0.f,
+        1.f + offsetX, -0.5f + offsetY, 1.f + offsetZ, 1.f, 1.f,
+        0.f + offsetX, -0.5f + offsetY, 1.f + offsetZ, 0.f, 1.f,
     };
 
     unsigned int indices[] = {
@@ -68,7 +101,7 @@ void Renderer::init()
     glBindVertexArray(0);
 
     sf::Image image;
-    image.loadFromFile("textures/rock.jpg");
+    image.loadFromFile("textures/grass.jpg");
 
     glGenTextures(1, &_texture);
     glBindTexture(GL_TEXTURE_2D, _texture);
@@ -84,26 +117,18 @@ void Renderer::init()
                  0, GL_RGBA, GL_UNSIGNED_BYTE, image.getPixelsPtr());
     glGenerateMipmap(GL_TEXTURE_2D);
 
-}
-
-void Renderer::render()
-{
-    glUseProgram(_shader);
-
-    glm::mat4 model      = glm::mat4(1.f);
-    glm::mat4 view       = _camera.getView();
-    glm::mat4 projection = glm::perspective(glm::radians(45.f), 800.f / 600.f, 0.1f, 100.f);
-
-    glUniformMatrix4fv(glGetUniformLocation(_shader, "model"),      1, GL_FALSE, glm::value_ptr(model));
-    glUniformMatrix4fv(glGetUniformLocation(_shader, "view"),       1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(glGetUniformLocation(_shader, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-
-    glBindVertexArray(_VAO);
-
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, _texture);
     glUniform1i(glGetUniformLocation(_shader, "texture1"), 0);
+}
 
+void Renderer::renderTile(float x, float z)
+{
+    glm::mat4 model = glm::translate(glm::mat4(1.f), glm::vec3(x, 0.f, z));
+
+    glUniformMatrix4fv(glGetUniformLocation(_shader, "model"), 1, GL_FALSE, glm::value_ptr(model));
+
+    glBindVertexArray(_VAO);
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 }
 

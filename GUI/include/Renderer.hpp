@@ -1,5 +1,8 @@
 #pragma once
 
+#define HEIGHT  5
+#define WIDTH   5
+
 #include <GL/glew.h>
 #include <SFML/Window.hpp>
 #include <SFML/Graphics.hpp>
@@ -11,14 +14,22 @@
 #include <iostream>
 
 #include "Camera.hpp"
+#include "Tile.hpp"
 
 class Renderer {
     public:
         Renderer();
         ~Renderer() = default;
 
-        void init();
+        void init(uint width, uint height);             // temporaire apres ca prendra les infos de gamestate
         void render();
+        void renderMap(uint width, uint height);        // temporaire apres ca prendra les infos de gamestate
+        void initTile(
+            float offsetX,
+            float offsetY, 
+            float offsetZ
+        );
+        void renderTile(float x, float z);              // FAUT QUE JE METTE AVEC TILE
 
         const sf::VideoMode& getVideoMode() const;
         const sf::Window&    getWindow   () const;

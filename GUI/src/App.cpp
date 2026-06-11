@@ -2,7 +2,7 @@
 
 App::App()
 {
-    _renderer.init();
+    _renderer.init(WIDTH, HEIGHT);
 }
 
 void App::run()
@@ -14,6 +14,7 @@ void App::run()
         }
 
         float deltaTime = _clock.restart().asSeconds();
+        _renderer.getCamera().processMouse(_renderer.getWindow());
         _renderer.getCamera().processInput(deltaTime);
 
         glClearColor(0.1f, 0.1f, 0.15f, 1.f);
@@ -21,7 +22,6 @@ void App::run()
 
         _renderer.render();
         _renderer.getWindow().display();
-        _renderer.getCamera().processMouse(_renderer.getWindow());
     }
 }
 
