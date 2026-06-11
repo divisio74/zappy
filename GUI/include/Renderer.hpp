@@ -2,6 +2,7 @@
 
 #include <GL/glew.h>
 #include <SFML/Window.hpp>
+#include <SFML/Graphics.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -33,6 +34,7 @@ class Renderer {
         GLuint              _VAO;
         GLuint              _VBO;
         GLuint              _EBO;
+        GLuint              _texture;
 
         GLuint _compileShader(GLenum type, const std::string& path);
         GLuint _createProgram(const std::string& vertPath, const std::string& fragPath);

@@ -21,5 +21,8 @@ void App::run()
 
         _renderer.render();
         _renderer.getWindow().display();
+        _renderer.getCamera().processMouse(_renderer.getWindow());
     }
 }
+
+// encapsuler libs graphiques

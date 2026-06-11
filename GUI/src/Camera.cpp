@@ -21,3 +21,22 @@ void Camera::processInput(float deltaTime)
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
         _position += glm::normalize(glm::cross(_front, _up)) * speed;
 }
+
+void Camera::processMouse(sf::Window &window)
+{
+    sf::Vector2i center(window.getSize().x / 2, window.getSize().y / 2);
+    sf::Vector2i mouse = sf::Mouse::getPosition(window);
+    sf::Vector2i delta = mouse - center;
+    sf::Mouse::setPosition(center, window);
+
+    float sensitivity = 0.1f;
+    _yaw   += delta.x * sensitivity;
+    _pitch -= delta.y * sensitivity;
+    _pitch  = glm::clamp(_pitch, -89.f, 89.f);
+
+    _front = glm::normalize(glm::vec3(
+        cos(glm::radians(_yaw)) * cos(glm::radians(_pitch)),
+        sin(glm::radians(_pitch)),
+        sin(glm::radians(_yaw)) * cos(glm::radians(_pitch))
+    ));
+}

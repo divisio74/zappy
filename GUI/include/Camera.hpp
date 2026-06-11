@@ -16,9 +16,12 @@ class Camera {
         glm::mat4 getView() const;
 
         void processInput(float deltaTime);
+        void processMouse(sf::Window &window);
 
     private:
         glm::vec3 _position;
         glm::vec3 _front;
         glm::vec3 _up;
+        float _yaw   = -90.f;
+        float _pitch = 0.f;
 };
