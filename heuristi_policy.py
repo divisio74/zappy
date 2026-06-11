@@ -58,17 +58,20 @@ def Heuristique_policyV1(state):
     vision = state["vision"]
     if vision and "food" in vision[0]:
         return "Take food"
+    if state["last"] == "Right":
+        return "Forward"
+    if state["last"] == "Left":
+        return "Forward"
     for i in range(len(vision)):
-        if "food" in vision[i]:
-            y = int(math.sqrt(i))
-            xx = y * (y + 1)
-            x = i - xx
-            if x > 0:
-                return "Right"
-            if x < 0:
-                return "Left"
-            if x == 0:
-                return "Forward"
+        y = int(math.sqrt(i))
+        xx = y * (y + 1)
+        x = i - xx
+        if "food" in vision[xx]:
+            return "Forward"
+        if x < 0 and "food" in vision[i]:
+            return "Left"
+        if x > 0 and "food" in vision[i]:
+            return "Right"
 
     return random.choice(["Forward", "Forward", "Left", "Right"])
 
@@ -77,9 +80,9 @@ def run(host, port, team_name):
     conn = Connection(host, port)
     slots, width, height = handshake(conn, team_name)
     print(f"[handshake] slots restants={slots}  map={width}x{height}")
-
-    state = {"width": width, "height": height, "vision": []}
-
+    last = ""
+    action_len = 0
+    state = {"width": width, "height": height, "vision": [], "last": last, "stuff": []}
     try:
         while True:
             conn.send("Look")
@@ -89,7 +92,15 @@ def run(host, port, team_name):
                 break
             state["vision"] = parsing_vision(look_line)
 
+            if action_len % 10 == 0:
+                conn.send("Inventory")
+                stuff_line = conn.readline()
+                state["stuff"] = parsing_stuff(stuff_line)
+
             command = Heuristique_policyV1(state)
+            state["last"] = command
+            action_len = action_len + 1
+
 
             conn.send(command)
             reply = conn.readline()
