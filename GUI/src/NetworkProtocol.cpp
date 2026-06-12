@@ -19,19 +19,21 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
     std::string cmd;
     words >> cmd;
 
-    state._mutex.lock();
+    state.lock();
 
     if (cmd == "msz") {
-        words >> state._width >> state._height;
-        state._map.assign(state._height, std::vector<Tile>(state._width));
+        int width = 0;
+        int height = 0;
+        words >> width >> height;
+        state.setSize(width, height);
     }
 
     else if (cmd == "bct") {
         int x = 0;
         int y = 0;
         words >> x >> y;
-        if (x >= 0 && x < state._width && y >= 0 && y < state._height) {
-            Tile &t = state._map[y][x];
+        if (x >= 0 && x < state.getWidth() && y >= 0 && y < state.getHeight()) {
+            Tile &t = state.getTile(y,x);
             words >> t.food >> t.linemate >> t.deraumere
                   >> t.sibur >> t.mendiane >> t.phiras >> t.thystame;
         }
@@ -40,7 +42,7 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
     else if (cmd == "tna") {
         std::string name;
         words >> name;
-        state._teams.push_back(name);
+        state.addTeam(name);
     }
 
     else if (cmd == "pnw") {
@@ -89,16 +91,22 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
     }
 
     else if (cmd == "sgt") {
-        words >> state._timeUnit;
+        int t;
+        words >> t;
+        state.setTimeUnit(t);
     }
 
     else if (cmd == "sst") {
-        words >> state._timeUnit;
+        int t;
+        words >> t;
+        state.setTimeUnit(t);
     }
 
     else if (cmd == "seg") {
-        words >> state._winner;
-        state._gameOver = true;
+        std::string winner;
+        words >> winner;
+        state.setGameOver(winner);
+
     }
 
     else if (cmd == "smg") {
@@ -115,5 +123,5 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
         std::cerr << "NetworkHandler: paramètre invalide\n";
     }
 
-    state._mutex.unlock();
+    state.unlock();
 }
