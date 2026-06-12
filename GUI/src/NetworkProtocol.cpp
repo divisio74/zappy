@@ -1,56 +1,19 @@
-
-#include "../include/networkHandler.hpp"
+#include "../include/NetworkProtocol.hpp"
 #include <iostream>
 #include <sstream>
-
-NetworkHandler::NetworkHandler()
-    : _connected(false)
-{
-}
-
-bool NetworkHandler::connect(const std::string &host, int port)
-{
-    try {
-        _socket = std::make_unique<ClientSocket>(host, (uint16_t)port);
-    } catch (const std::runtime_error &e) {
-        std::cerr << "NetworkHandler: connexion échouée : " << e.what() << "\n";
-        return false;
-    }
-
-    std::vector<std::string> lines = _socket->read();
-    if (lines.empty() || lines[0] != "WELCOME") {
-        std::cerr << "NetworkHandler: réponse inattendue du serveur\n";
-        return false;
-    }
-    _socket->write("GRAPHIC");
-    _connected = true;
-    std::cout << "NetworkHandler: connecté au serveur Zappy en bien bien\n";
-    return true;
-}
-
-
-void NetworkHandler::poll(GameState &state)
-{
-    if (!_connected)
-        return;
  
-    std::vector<std::string> lines;
-
-    try {
-        lines = _socket->read();
-    } catch (const std::runtime_error &e) {
-        std::cerr << "NetworkHandler: connexion perdue : " << e.what() << "\n";
-        _connected = false;
-        return;
-    }
-
+void NetworkProtocol::poll(GameState &state)
+{
+    std::vector<std::string> lines = receive();
+ 
     for (const std::string &line : lines) {
         if (!line.empty())
             parseMessage(line, state);
     }
 }
 
-void NetworkHandler::parseMessage(const std::string &line, GameState &state)
+
+void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
 {
     std::istringstream words(line);
     std::string cmd;
@@ -87,7 +50,6 @@ void NetworkHandler::parseMessage(const std::string &line, GameState &state)
     }
 
     else if (cmd == "plv") {
-
     }
 
     else if (cmd == "pin") {
@@ -154,23 +116,4 @@ void NetworkHandler::parseMessage(const std::string &line, GameState &state)
     }
 
     state._mutex.unlock();
-}
-
-void NetworkHandler::send(const std::string &cmd)
-{
-    _sendBuffer += cmd;
-}
-
-void NetworkHandler::flush()
-{
-    if (!_connected || _sendBuffer.empty())
-        return;
-
-    try {
-        _socket->write(_sendBuffer);
-        _sendBuffer.clear();
-    } catch (const std::runtime_error &e) {
-        std::cerr << "NetworkHandler: envoi échoué : " << e.what() << "\n";
-        _connected = false;
-    }
 }

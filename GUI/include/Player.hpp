@@ -10,4 +10,5 @@ struct Player {
     std::string _teamName;
     bool _isAlive;
     std::tuple<int, int> _pos;
+    Player();
 };

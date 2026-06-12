@@ -1,4 +1,4 @@
-#include "../include/networkHandler.hpp"
+#include "../include/NetworkProtocol.hpp"
 #include "../include/GameState.hpp"
 #include <iostream>
 #include <thread>
@@ -13,7 +13,7 @@ int main(int argc, char **argv)
 
     int port = std::stoi(argv[2]);
     GameState state;
-    NetworkHandler network;
+    NetworkProtocol network;
 
     if (!network.connect("127.0.0.1", port))
         return 84;
