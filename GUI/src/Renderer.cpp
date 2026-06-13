@@ -15,36 +15,25 @@ Renderer::Renderer()
     _window.setFramerateLimit(60);
 }
 
-void Renderer::init(uint width, uint height)
+void Renderer::init()
 {
     glewExperimental = GL_TRUE;
     glewInit();
     glEnable(GL_DEPTH_TEST);
 
-    _shader = _createProgram("shaders/vertex.glsl", "shaders/fragment.glsl");
-    //Doc : https://learnopengl.com/Getting-started/Hello-Triangle#:~:text=Vertex%20input
-
-    uint Zoffset = 0;
-
-    for (uint y = 0; y < height; y++) {
-        for (uint x = 0; x < width; x++) {
-            initTile(x, y, Zoffset);
-        }
-        Zoffset++;
-    }
+    _shader = std::make_unique<Shader>("shaders/vertex.glsl", "shaders/fragment.glsl");
+    _tileMesh = initTile();
 }
 
 void Renderer::render()
 {
-    glUseProgram(_shader);
-
-    glm::mat4 model      = glm::mat4(1.f);
     glm::mat4 view       = _camera.getView();
     glm::mat4 projection = glm::perspective(glm::radians(45.f), 800.f / 600.f, 0.1f, 100.f);
 
-    glUniformMatrix4fv(glGetUniformLocation(_shader, "model"),      1, GL_FALSE, glm::value_ptr(model));
-    glUniformMatrix4fv(glGetUniformLocation(_shader, "view"),       1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(glGetUniformLocation(_shader, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    (*_shader).setMat4("view", view);
+    (*_shader).setMat4("projection", projection);
+
+    _shader->use();
 
     renderMap(WIDTH, HEIGHT);
 }
@@ -56,22 +45,30 @@ void Renderer::renderMap(uint width, uint height)
             renderTile(x, y);
 }
 
-void Renderer::initTile(float offsetX, float offsetY, float offsetZ)
+void Renderer::renderTile(float x, float z)
 {
-    float vertices[] = {
+    glm::mat4 model = glm::translate(glm::mat4(1.f), glm::vec3(x, 0.f, z));
+    _shader->setMat4("model", model);
+    _tileMesh->Draw(*_shader);
+}
 
-        0.f + offsetX, 0.5f + offsetY, 0.f + offsetZ, 0.f, 0.f,
-        1.f + offsetX, 0.5f + offsetY, 0.f + offsetZ, 1.f, 0.f,
-        1.f + offsetX, 0.5f + offsetY, 1.f + offsetZ, 1.f, 1.f,
-        0.f + offsetX, 0.5f + offsetY, 1.f + offsetZ, 0.f, 1.f,
+std::unique_ptr<Mesh> Renderer::initTile()
+{
+    //Doc : https://learnopengl.com/Getting-started/Hello-Triangle#:~:text=Vertex%20input
 
-        0.f + offsetX, -0.5f + offsetY, 0.f + offsetZ, 0.f, 0.f,
-        1.f + offsetX, -0.5f + offsetY, 0.f + offsetZ, 1.f, 0.f,
-        1.f + offsetX, -0.5f + offsetY, 1.f + offsetZ, 1.f, 1.f,
-        0.f + offsetX, -0.5f + offsetY, 1.f + offsetZ, 0.f, 1.f,
+    std::vector<Vertex> vertices = {
+        {{0.f,  0.5f, 0.f}, {0.f, 0.f, 0.f}, {0.f, 0.f}},
+        {{1.f,  0.5f, 0.f}, {0.f, 0.f, 0.f}, {1.f, 0.f}},
+        {{1.f,  0.5f, 1.f}, {0.f, 0.f, 0.f}, {1.f, 1.f}},
+        {{0.f,  0.5f, 1.f}, {0.f, 0.f, 0.f}, {0.f, 1.f}},
+
+        {{0.f, -0.5f, 0.f}, {0.f, 0.f, 0.f}, {0.f, 0.f}},
+        {{1.f, -0.5f, 0.f}, {0.f, 0.f, 0.f}, {1.f, 0.f}},
+        {{1.f, -0.5f, 1.f}, {0.f, 0.f, 0.f}, {1.f, 1.f}},
+        {{0.f, -0.5f, 1.f}, {0.f, 0.f, 0.f}, {0.f, 1.f}},
     };
 
-    unsigned int indices[] = {
+    std::vector<unsigned int> indices = {
         0, 1, 2,  2, 3, 0,
         4, 5, 6,  6, 7, 4,
         0, 1, 5,  5, 4, 0,
@@ -80,85 +77,23 @@ void Renderer::initTile(float offsetX, float offsetY, float offsetZ)
         1, 2, 6,  6, 5, 1,
     };
 
-    glGenVertexArrays(1, &_VAO);
-    glGenBuffers(1, &_VBO);
-    glGenBuffers(1, &_EBO);
-
-    glBindVertexArray(_VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, _VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), static_cast<void*>(0));
-    glEnableVertexAttribArray(0);
-    
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-    
-    glBindVertexArray(0);
-
     sf::Image image;
     image.loadFromFile("textures/grass.jpg");
 
-    glGenTextures(1, &_texture);
-    glBindTexture(GL_TEXTURE_2D, _texture);
-
+    GLuint texId;
+    glGenTextures(1, &texId);
+    glBindTexture(GL_TEXTURE_2D, texId);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
                  image.getSize().x, image.getSize().y,
                  0, GL_RGBA, GL_UNSIGNED_BYTE, image.getPixelsPtr());
     glGenerateMipmap(GL_TEXTURE_2D);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, _texture);
-    glUniform1i(glGetUniformLocation(_shader, "texture1"), 0);
-}
-
-void Renderer::renderTile(float x, float z)
-{
-    glm::mat4 model = glm::translate(glm::mat4(1.f), glm::vec3(x, 0.f, z));
-
-    glUniformMatrix4fv(glGetUniformLocation(_shader, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-    glBindVertexArray(_VAO);
-    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-}
-
-GLuint Renderer::_compileShader(GLenum type, const std::string& path)
-{
-    std::ifstream f(path);
-    std::stringstream ss;
-    ss << f.rdbuf();
-    std::string src = ss.str();
-    const char* c = src.c_str();
-
-    GLuint shader = glCreateShader(type);
-    glShaderSource(shader, 1, &c, nullptr);
-    glCompileShader(shader);
-    return shader;
-}
-
-GLuint Renderer::_createProgram(const std::string& vertPath, const std::string& fragPath)
-{
-    GLuint vert = _compileShader(GL_VERTEX_SHADER,   vertPath);
-    GLuint frag = _compileShader(GL_FRAGMENT_SHADER, fragPath);
-
-    GLuint prog = glCreateProgram();
-    glAttachShader(prog, vert);
-    glAttachShader(prog, frag);
-    glLinkProgram (prog);
-
-    glDeleteShader(vert);
-    glDeleteShader(frag);
-    return prog;
+    std::vector<Texture> textures = {{ texId, "texture_diffuse" }};
+    return std::make_unique<Mesh>(vertices, indices, textures);
 }
 
 const sf::VideoMode& Renderer::getVideoMode() const

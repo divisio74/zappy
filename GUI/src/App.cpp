@@ -2,7 +2,7 @@
 
 App::App()
 {
-    _renderer.init(WIDTH, HEIGHT);
+    _renderer.init();
 }
 
 void App::run()

@@ -6,7 +6,7 @@
 ##
 
 CFLAGS   = -std=c++20 -Wall -Wextra -I./include #-Werror
-LDFLAGS  = -lsfml-graphics -lsfml-window -lsfml-system -lGLEW -lGL
+LDFLAGS  = -lsfml-graphics -lsfml-window -lsfml-system -lGLEW -lGL -lassimp
 
 CC       = clang++
 SRC      =  ${wildcard src/*.cpp}

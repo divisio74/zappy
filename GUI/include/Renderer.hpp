@@ -15,21 +15,19 @@
 
 #include "Camera.hpp"
 #include "Tile.hpp"
+#include "Shader.hpp"
+#include "Mesh.hpp"
 
 class Renderer {
     public:
         Renderer();
         ~Renderer() = default;
 
-        void init(uint width, uint height);             // temporaire apres ca prendra les infos de gamestate
+        void init();
         void render();
         void renderMap(uint width, uint height);        // temporaire apres ca prendra les infos de gamestate
-        void initTile(
-            float offsetX,
-            float offsetY, 
-            float offsetZ
-        );
-        void renderTile(float x, float z);              // FAUT QUE JE METTE AVEC TILE
+        void renderTile(float x, float z);
+        std::unique_ptr<Mesh> initTile();
 
         const sf::VideoMode& getVideoMode() const;
         const sf::Window&    getWindow   () const;
@@ -37,16 +35,10 @@ class Renderer {
         Camera&              getCamera   ();
 
     private:
-        sf::VideoMode       _videoMode;
-        sf::ContextSettings _settings;
-        sf::Window          _window;
-        Camera              _camera;
-        GLuint              _shader;
-        GLuint              _VAO;
-        GLuint              _VBO;
-        GLuint              _EBO;
-        GLuint              _texture;
-
-        GLuint _compileShader(GLenum type, const std::string& path);
-        GLuint _createProgram(const std::string& vertPath, const std::string& fragPath);
+        sf::VideoMode                   _videoMode;
+        sf::ContextSettings             _settings;
+        sf::Window                      _window;
+        Camera                          _camera;
+        std::unique_ptr<Shader>         _shader;
+        std::unique_ptr<Mesh>           _tileMesh;
 };
