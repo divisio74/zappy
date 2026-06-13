@@ -23,6 +23,30 @@ void Renderer::init()
 
     _shader = std::make_unique<Shader>("shaders/vertex.glsl", "shaders/fragment.glsl");
     _tileMesh = initTile();
+    _playerModel = std::make_unique<Model>("model/player.glb", glm::vec3(20.f), glm::vec3(-90.f, 0.f, 0.f), glm::vec3(0.f));
+}
+
+GLuint Renderer::TextureFromFile(const char *path, const std::string &directory)
+{
+    std::string filename = directory + "/" + path;
+
+    GLuint texId;
+    glGenTextures(1, &texId);
+
+    sf::Image image;
+    image.loadFromFile(filename);
+
+    glBindTexture(GL_TEXTURE_2D, texId);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+                 image.getSize().x, image.getSize().y,
+                 0, GL_RGBA, GL_UNSIGNED_BYTE, image.getPixelsPtr());
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    return texId;
 }
 
 void Renderer::render()
@@ -36,6 +60,15 @@ void Renderer::render()
     _shader->use();
 
     renderMap(WIDTH, HEIGHT);
+    std::unique_ptr<Model> p1 = std::make_unique<Model>("model/player.glb", glm::vec3(20.f), glm::vec3(-90.f, 0.f, 0.f), glm::vec3(0.f));
+    std::unique_ptr<Model> p2 = std::make_unique<Model>("model/player.glb", glm::vec3(20.f), glm::vec3(-90.f, 0.f, 0.f), glm::vec3(0.f));
+    std::unique_ptr<Model> p3 = std::make_unique<Model>("model/player.glb", glm::vec3(20.f), glm::vec3(-90.f, 0.f, 0.f), glm::vec3(0.f));
+    _playerModel->Draw(*_shader, glm::vec3(1.f, 0.5f, 1.f));
+    p1->Draw(*_shader, glm::vec3(3.f, 0.5f, 1.f));
+    p2->Draw(*_shader, glm::vec3(5.f, 0.5f, 1.f));
+    p3->Draw(*_shader, glm::vec3(7.f, 0.5f, 1.f));
+
+
 }
 
 void Renderer::renderMap(uint width, uint height)
@@ -78,7 +111,7 @@ std::unique_ptr<Mesh> Renderer::initTile()
     };
 
     sf::Image image;
-    image.loadFromFile("textures/grass.jpg");
+    image.loadFromFile("textures/rock.jpg");        // UTILISER TEXTURELOADER ICIIII
 
     GLuint texId;
     glGenTextures(1, &texId);

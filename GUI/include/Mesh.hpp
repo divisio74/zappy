@@ -3,9 +3,14 @@
 #include <GL/glew.h>
 #include <SFML/Window.hpp>
 #include <SFML/Graphics.hpp>
+#include <string>
+#include <vector>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -21,6 +26,7 @@ struct Vertex {
 struct Texture {
     unsigned int id;
     std::string type;
+    aiString path;
 };  
 
 class Mesh {
