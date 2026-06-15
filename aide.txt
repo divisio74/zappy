@@ -25,3 +25,5 @@ PHASE 2 — regroupée (rassemblements), broadcast ACTIF
 q and r :
 
 inventiare illimité
+
+idée de batard pour niquer les autres equipes faire un injection dans les autres models depuis le broadcast 
