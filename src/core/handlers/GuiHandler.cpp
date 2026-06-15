@@ -7,5 +7,5 @@ GuiHandler::GuiHandler(const WorldData &worldData)
 
 const std::vector<std::vector<Tile>> &GuiHandler::getMap() const
 {
-    return _worldData.map;
+    return _worldData.getMap();
 }

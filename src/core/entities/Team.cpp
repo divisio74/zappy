@@ -1,7 +1,15 @@
 #include "core/entities/Team.hpp"
 
+#include <utility>
+
 Team::Team(std::size_t id)
     : _id(id)
+{
+}
+
+Team::Team(std::size_t id, std::string name)
+    : _id(id),
+      _name(std::move(name))
 {
 }
 
@@ -48,4 +56,9 @@ void Team::setUsedSlot(std::size_t usedSlot)
 std::size_t Team::getId() const
 {
     return _id;
+}
+
+const std::string &Team::getName() const
+{
+    return _name;
 }

@@ -10,12 +10,13 @@
 #include "core/world/WorldData.hpp"
 #include "network/SocketRegistry.hpp"
 
-class Core {
+class Core
+{
 public:
     Core();
     Core(std::uint16_t port, std::size_t width, std::size_t height,
-        const std::vector<std::string> &teamNames, std::size_t clientsNb,
-        std::size_t frequency);
+         const std::vector<std::string> &teamNames, std::size_t clientsNb,
+         std::size_t frequency);
 
     WorldData &getWorldData();
     const WorldData &getWorldData() const;
@@ -23,12 +24,19 @@ public:
     const SocketRegistry &getSocketRegistry() const;
     GuiHandler &getGuiHandler();
     AiHandler &getAiHandler();
-    void dispatchige();
+    void dispatche();
 
 private:
+    void acceptPendingConnection();
+    void removeLostConnections();
+    void assignSocketTypes();
+    void assignSocketType(std::size_t socketId, const std::string &command);
+    void dispatchReadySockets(const std::vector<std::size_t> &readySockets);
+    std::size_t createBusinessId();
+
     WorldData _worldData;
     SocketRegistry _socketRegistry;
     GuiHandler _guiHandler;
     AiHandler _aiHandler;
-    std::size_t _nextSocketId;
+    std::size_t _nextBusinessId;
 };
