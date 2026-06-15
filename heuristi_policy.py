@@ -5,6 +5,8 @@ import random
 import socket
 import math
 
+Team_Password = "_yaR_OFJv" #je sais je sais ...
+
 class Connection:
     def __init__(self, host, port):
         self.sock = socket.create_connection((host, port))
@@ -53,6 +55,36 @@ def parsing_stuff(line):
             inv[parts[0]] = int(parts[1])
     return inv
 
+def get_response(conn, state):
+    while True:
+        line = conn.readline()
+        if line.startswith("message"):
+            handle_broadcast(line, state)
+            continue
+        return line
+
+def handle_broadcast(line, state):
+    try:
+        body = line[len("message "):]
+        k_str, text = body.split(", ", 1)
+        k = int(k_str)
+        parts = text.split(":")
+        if len(parts) < 3 or parts[0] != Team_Password:
+            return
+        sender_id = int(parts[1])
+        if sender_id == state["id"]:
+            return
+        msg_type = parts[2]
+        payload  = parts[3] if len(parts) > 3 else ""
+
+        state["team"][sender_id] = {
+            "k": k,
+            "type": msg_type,
+            "payload": payload,
+        }
+
+    except (ValueError, IndexError):
+        return
 
 def Heuristique_policyV1(state):
 
@@ -131,7 +163,7 @@ def Heuristique_policyV1(state):
     return random.choice(["Forward", "Forward", "Left", "Right"])
 
 
-def run(host, port, team_name):
+def run(host, port, team_name, player_id):
     conn = Connection(host, port)
     slots, width, height = handshake(conn, team_name)
     print(f"[handshake] slots restants={slots}  map={width}x{height}")
@@ -139,7 +171,7 @@ def run(host, port, team_name):
     action_len = 0
     level = 0
     child = []
-    state = {"width": width, "height": height, "vision": [], "last": last, "stuff": [],"level": level, "childs": [], "broadcast": []}
+    state = {"width": width, "height": height, "vision": [], "id": player_id, "last": last, "stuff": [],"level": level, "childs": [], "broadcast": [], "team": {}}
     try:
         while True:
             conn.send("Look")
@@ -178,11 +210,12 @@ def run(host, port, team_name):
 
 def main():
     parser = argparse.ArgumentParser(description="AI client for zappy", add_help=False)
+    parser.add_argument("-i", type=int, required=True, dest="id", help="id du joueur")
     parser.add_argument("-p", type=int, required=True, dest="port", help="port")
     parser.add_argument("-n", required=True, dest="name", help="nom d'equipe")
     parser.add_argument("-H", "-h", default="127.0.0.1", dest="host", help="machine")
     args = parser.parse_args()
-    run(args.host, args.port, args.name)
+    run(args.host, args.port, args.name, args.id)
 
 
 if __name__ == "__main__":
