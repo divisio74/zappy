@@ -1,8 +1,5 @@
 #pragma once
 
-#include <vector>
-
-#include "core/world/Tile.hpp"
 #include "core/world/WorldData.hpp"
 
 class GuiHandler {

@@ -4,7 +4,8 @@
 #include <stdexcept>
 
 SocketRegistry::SocketRegistry()
-    : _hasPendingConnection(false)
+    : _nextSocketId(0),
+      _hasPendingConnection(false)
 {
     _fds.fill(-1);
 }
@@ -22,18 +23,21 @@ bool SocketRegistry::hasPendingConnection() const
     return _hasPendingConnection;
 }
 
-void SocketRegistry::acceptConnection(std::size_t id)
+std::size_t SocketRegistry::acceptConnection()
 {
     if (!_serverSocket.has_value())
         throw std::runtime_error("server socket is not listening");
     if (_sockets.size() >= MaxSockets)
         throw std::runtime_error("maximum number of client sockets reached");
-    if (_indexById.contains(id))
-        throw std::runtime_error("client socket id already exists");
 
-    _sockets.push_back({id, _serverSocket->acceptConnection()});
+    std::size_t id = _nextSocketId++;
+
+    _sockets.push_back(
+        {id, _serverSocket->acceptConnection(), SocketState::Undefined,
+         std::nullopt});
     _hasPendingConnection = false;
     refreshFds();
+    return id;
 }
 
 void SocketRegistry::removeSocket(std::size_t id)
@@ -51,6 +55,7 @@ std::vector<std::size_t> SocketRegistry::pollSockets()
     std::size_t clientOffset = 0;
 
     _hasPendingConnection = false;
+    _pendingIdentifications.clear();
     if (_serverSocket.has_value()) {
         pollFds.push_back({_serverSocket->getFd(), POLLIN, 0});
         clientOffset = 1;
@@ -74,10 +79,23 @@ std::vector<std::size_t> SocketRegistry::pollSockets()
             markLostConnection(id);
             continue;
         }
-        if (pollFds[i].revents & POLLIN)
-            readyIds.push_back(id);
+        if (!(pollFds[i].revents & POLLIN))
+            continue;
+        if (getSocketState(id) == SocketState::Undefined) {
+            _pendingIdentifications.push_back(id);
+            continue;
+        }
+        readyIds.push_back(id);
     }
     return readyIds;
+}
+
+std::vector<std::size_t> SocketRegistry::getPendingIdentificationSockets()
+{
+    std::vector<std::size_t> pendingIdentifications = _pendingIdentifications;
+
+    _pendingIdentifications.clear();
+    return pendingIdentifications;
 }
 
 std::vector<std::size_t> SocketRegistry::getLostConnections()
@@ -118,6 +136,25 @@ void SocketRegistry::write(std::size_t id, const std::string &message)
     } catch (const std::runtime_error &) {
         markLostConnection(id);
     }
+}
+
+SocketRegistry::SocketState SocketRegistry::getSocketState(std::size_t id) const
+{
+    return _sockets[getIndex(id)].state;
+}
+
+std::optional<std::size_t> SocketRegistry::getBusinessId(std::size_t id) const
+{
+    return _sockets[getIndex(id)].businessId;
+}
+
+void SocketRegistry::setSocketIdentity(std::size_t id, SocketState state,
+                                       std::size_t businessId)
+{
+    SocketEntry &entry = _sockets[getIndex(id)];
+
+    entry.state = state;
+    entry.businessId = businessId;
 }
 
 std::size_t SocketRegistry::size() const
