@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from helpers_net import Team_Password
+from IA_helpers_net import Team_Password
 
 def parsing_vision(line):
     inner = line.strip().lstrip("[").rstrip("]")

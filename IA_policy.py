@@ -3,10 +3,10 @@
 import argparse
 import random
 
-from helpers_net import Connection, handshake
-from helpers_parsing import get_response, parsing_vision, parsing_stuff
-from helpers_together_inv import broadcast_inventory
-from search_mode import search_food, search_food_or_t, search_level1, search_level2
+from IA_helpers_net import Connection, handshake
+from IA_helpers_parsing import get_response, parsing_vision, parsing_stuff
+from IA_helpers_together_inv import broadcast_inventory
+from IA_search_mode import search_food, search_food_or_t, search_level1, search_level2
 
 
 def Heuristique_policyV1(state):

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from helpers_net import Team_Password
+from IA_helpers_net import Team_Password
 
 RECIPES = {
     1: (1, {"linemate": 1}),

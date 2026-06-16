@@ -3,8 +3,8 @@
 import math
 import random
 
-from helpers_meeting import partner_id, run_meeting_for2
-from helpers_together_inv import team_thystame, stone_total, has_recipe
+from IA_helpers_meeting import partner_id, run_meeting_for2
+from IA_helpers_together_inv import team_thystame, stone_total, has_recipe
 
 
 def search_food(state):
