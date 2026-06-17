@@ -26,7 +26,7 @@ def partner_id(my_id):
 def run_meeting_for2(state):
     p = partner_id(state["id"])
     if state["id"] < p:
-        return f"Broadcast {Team_Password}:{state['id']}:rally"
+        return f"Broadcast {Team_Password}:{state['id']}:{state['level']}:rally"
     if p in state["team"]:
         return guess_direction(state["team"][p]["k"])
     return "Look"
@@ -34,8 +34,16 @@ def run_meeting_for2(state):
 
 def run_meeting_for6(state):
     if not state["team"]:
-        return f"Broadcast {Team_Password}:{state['id']}:rally"
+        return f"Broadcast {Team_Password}:{state['id']}:{state['level']}:rally"
     balise_id = min(state["team"])
     if balise_id < state["id"]:
         return guess_direction(state["team"][balise_id]["k"])
-    return f"Broadcast {Team_Password}:{state['id']}:rally"
+    return f"Broadcast {Team_Password}:{state['id']}:{state['level']}:rally"
+
+def check_phase2(state):
+    for info in state["team"].values():
+        if info["level"] < 4:
+            return False
+    if len(state["team"]) != 5:
+        return False
+    return True

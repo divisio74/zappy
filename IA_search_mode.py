@@ -93,18 +93,20 @@ def search_level2(state):
     inv = stone_total(state, [p_id])
     comp = has_recipe(inv, 2)
     if comp == True:
+        if vision[0].count("player") >= 2:
+            if vision[0].count("sibur") < 1 and state["stuff"].get("sibur", 0) > 0:
+                return "Set sibur"
+            if vision[0].count("deraumere") < 1 and state["stuff"].get("deraumere", 0) > 0:
+                return "Set deraumere"
+            if vision[0].count("linemate") < 1 and state["stuff"].get("linemate", 0) > 0:
+                return "Set linemate"
+            if vision[0].count("linemate") >= 1 and vision[0].count("deraumere") >= 1 and vision[0].count("sibur") >= 1:
+                if state["id"] < p_id:
+                    return "Incantation"
+            return "Look"
         verdicte = run_meeting_for2(state)
         if verdicte == "Unknow k":
             return "Look"
-        if verdicte == "final_destination":
-            if state["vision"][0].count("sibur") < 1 and state["stuff"]["sibur"] > 0:
-                return "Set sibur"
-            if state["vision"][0].count("deraumere") < 1 and state["stuff"]["deraumere"] > 0:
-                return "Set deraumere"
-            if state["vision"][0].count("linemate") < 1 and state["stuff"]["linemate"] > 0:
-                return "Set linemate"
-            if state["vision"][0].count("linemate") >= 1 and state["vision"][0].count("deraumere") >= 1 and state["vision"][0].count("sibur") >= 1:
-                return "Incantation"
         return verdicte
     if "sibur" in vision[0]:
         return "Take sibur"
@@ -127,6 +129,76 @@ def search_level2(state):
         if x > 0 and ("sibur" in vision[i] or "deraumere" in vision[i] or "linemate" in vision[i]):
             return "Right"
     return random.choice(["Forward", "Forward", "Left", "Right"])
+
+
+def search_level3(state):
+    vision = state["vision"]
+    p_id = partner_id(state["id"])
+    inv = stone_total(state, [p_id])
+    comp = has_recipe(inv, 3)
+    if comp == True:
+        if vision[0].count("player") >= 2:
+            if vision[0].count("sibur") < 1 and state["stuff"].get("sibur", 0) > 0:
+                return "Set sibur"
+            if vision[0].count("phiras") < 2 and state["stuff"].get("phiras", 0) > 0:
+                return "Set phiras"
+            if vision[0].count("linemate") < 2 and state["stuff"].get("linemate", 0) > 0:
+                return "Set linemate"
+            if vision[0].count("linemate") >= 2 and vision[0].count("phiras") >= 2 and vision[0].count("sibur") >= 1:
+                if state["id"] < p_id:
+                    return "Incantation"
+            return "Look"
+        verdicte = run_meeting_for2(state)
+        if verdicte == "Unknow k":
+            return "Look"
+        return verdicte
+    if "phiras" in vision[0]:
+        return "Take phiras"
+    if "sibur" in vision[0]:
+        return "Take sibur"
+    if "linemate" in vision[0]:
+        return "Take linemate"
+    if state["last"] == "Right":
+        return "Forward"
+    if state["last"] == "Left":
+        return "Forward"
+    for i in range(len(vision)):
+        y = int(math.sqrt(i))
+        xx = y * (y + 1)
+        x = i - xx
+        if "phiras" in vision[xx] or "sibur" in vision[xx] or "linemate" in vision[xx]:
+            return "Forward"
+        if x < 0 and ("phiras" in vision[i] or "sibur" in vision[i] or "linemate" in vision[i]):
+            return "Left"
+        if x > 0 and ("phiras" in vision[i] or "sibur" in vision[i] or "linemate" in vision[i]):
+            return "Right"
+    return random.choice(["Forward", "Forward", "Left", "Right"])
+
+def search_level4_b6(state):
+    vision = state["vision"]
+    if "phiras" in vision[0]:
+        return "Take phiras"
+    if "mandiane" in vision[0]:
+        return "Take mandiane"
+    if "sibur" in vision[0]:
+        return "Take sibur"
+    if state["last"] == "Right":
+        return "Forward"
+    if state["last"] == "Left":
+        return "Forward"
+    for i in range(len(vision)):
+        y = int(math.sqrt(i))
+        xx = y * (y + 1)
+        x = i - xx
+        if "phiras" in vision[xx] or "mandiane" in vision[xx] or "sibur" in vision[xx]:
+            return "Forward"
+        if x < 0 and ("phiras" in vision[i] or "mandiane" in vision[i] or "sibur" in vision[i]):
+            return "Left"
+        if x > 0 and ("phiras" in vision[i] or "mandiane" in vision[i] or "sibur" in vision[i]):
+            return "Right"
+    return random.choice(["Forward", "Forward", "Left", "Right"])
+
+
 
 
 
