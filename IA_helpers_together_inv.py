@@ -52,3 +52,8 @@ def has_recipe(total, level):
         if total.get(stone, 0) < qty:
             return False
     return True
+
+def get_id(state):
+    return list(state["team"])
+
+

@@ -3,8 +3,8 @@
 import math
 import random
 
-from IA_helpers_meeting import partner_id, run_meeting_for2
-from IA_helpers_together_inv import team_thystame, stone_total, has_recipe
+from IA_helpers_meeting import partner_id, run_meeting_for2, run_meeting_for6
+from IA_helpers_together_inv import team_thystame, stone_total, has_recipe, get_id
 
 
 def search_food(state):
@@ -31,7 +31,7 @@ def search_food(state):
 
 def search_food_or_t(state):
     vision = state["vision"]
-    total_thyst = team_thystame(state) == 0          # on chasse le thystame seulement si l'équipe n'en a AUCUN
+    total_thyst = team_thystame(state) == 0
 
     if total_thyst and "thystame" in vision[0]:
         return "Take thystame"
@@ -198,6 +198,48 @@ def search_level4_b6(state):
             return "Right"
     return random.choice(["Forward", "Forward", "Left", "Right"])
 
+def search_level4(state):
+    vision = state["vision"]
+    p_id = get_id(state)
+    inv = stone_total(state, [p_id])
+    comp = has_recipe(inv, 4)
+    if comp == True:
+        if vision[0].count("player") >= 2:
+            if vision[0].count("sibur") < 1 and state["stuff"].get("sibur", 0) > 0:
+                return "Set sibur"
+            if vision[0].count("phiras") < 2 and state["stuff"].get("phiras", 0) > 0:
+                return "Set phiras"
+            if vision[0].count("linemate") < 2 and state["stuff"].get("linemate", 0) > 0:
+                return "Set linemate"
+            if vision[0].count("linemate") >= 2 and vision[0].count("phiras") >= 2 and vision[0].count("sibur") >= 1:
+                if state["id"] < p_id:
+                    return "Incantation"
+            return "Look"
+        verdicte = run_meeting_for6(state)
+        if verdicte == "Unknow k":
+            return "Look"
+        return verdicte
+    if "phiras" in vision[0]:
+        return "Take phiras"
+    if "sibur" in vision[0]:
+        return "Take sibur"
+    if "linemate" in vision[0]:
+        return "Take linemate"
+    if state["last"] == "Right":
+        return "Forward"
+    if state["last"] == "Left":
+        return "Forward"
+    for i in range(len(vision)):
+        y = int(math.sqrt(i))
+        xx = y * (y + 1)
+        x = i - xx
+        if "phiras" in vision[xx] or "sibur" in vision[xx] or "linemate" in vision[xx]:
+            return "Forward"
+        if x < 0 and ("phiras" in vision[i] or "sibur" in vision[i] or "linemate" in vision[i]):
+            return "Left"
+        if x > 0 and ("phiras" in vision[i] or "sibur" in vision[i] or "linemate" in vision[i]):
+            return "Right"
+    return random.choice(["Forward", "Forward", "Left", "Right"])
 
 
 
