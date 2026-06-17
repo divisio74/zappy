@@ -20,18 +20,18 @@ def parse_inv_payload(payload):
             result[key] = int(val)
     return result
 
+STONES = ["linemate", "deraumere", "sibur", "mendiane", "phiras", "thystame"]
+
 def make_inv_payload(state):
     inv = state["stuff"]
-    return f"linemate={inv.get('linemate',0)},deraumere={inv.get('deraumere',0)},sibur={inv.get('sibur',0)}"
+    return ",".join(f"{s}={inv.get(s, 0)}" for s in STONES)
 
 def broadcast_inventory(state):
-    return f"Broadcast {Team_Password}:{state['id']}:inv:{make_inv_payload(state)}"
+    return f"Broadcast {Team_Password}:{state['id']}:{state['level']}:inv:{make_inv_payload(state)}"
 
 
 def stone_total(state, ids):
-    total = {"linemate": state["stuff"]["linemate"],
-             "deraumere": state["stuff"]["deraumere"],
-             "sibur": state["stuff"]["sibur"]}
+    total = {s: state["stuff"].get(s, 0) for s in STONES}
     for i in ids:
         if i in state["team"] and state["team"][i]["type"] == "inv":
             other = parse_inv_payload(state["team"][i]["payload"])
