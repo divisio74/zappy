@@ -1,7 +1,8 @@
 #include "core/Core.hpp"
 
 Core::Core()
-    : _guiHandler(_worldData),
+    : _worldHandling(_worldData),
+      _guiHandler(_worldData),
       _aiHandler(_worldData)
 {
 }
@@ -9,15 +10,15 @@ Core::Core()
 Core::Core(std::uint16_t port, std::size_t width, std::size_t height,
     const std::vector<std::string> &teamNames, std::size_t clientsNb,
     std::size_t frequency)
-    : _guiHandler(_worldData),
+    : _worldHandling(_worldData),
+      _guiHandler(_worldData),
       _aiHandler(_worldData)
 {
     static_cast<void>(port);
-    static_cast<void>(width);
-    static_cast<void>(height);
-    static_cast<void>(teamNames);
-    static_cast<void>(clientsNb);
-    static_cast<void>(frequency);
+    _worldData.freq = frequency;
+    _worldData.size.x = width;
+    _worldData.size.y = height;
+    _worldHandling.createMap(width, height, teamNames, clientsNb);
 }
 
 WorldData &Core::getWorldData()
@@ -48,4 +49,9 @@ GuiHandler &Core::getGuiHandler()
 AiHandler &Core::getAiHandler()
 {
     return _aiHandler;
+}
+
+WorldHandling &Core::getWorldHandling()
+{
+    return _worldHandling;
 }

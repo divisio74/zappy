@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 struct Inventory {
     int food = 0;
     int linemate = 0;
