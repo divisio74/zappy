@@ -1,9 +1,9 @@
 #include "core/handlers/AiHandler.hpp"
+
 #include <string>
 #include <sstream>
-#include "AiHandler.hpp"
 
-static const std::unordered_map<std::string, int> ACTION_COSTS = {
+const std::unordered_map<std::string, int> AiHandler::ACTION_COSTS = {
     {"Forward",     7},
     {"Right",       7},
     {"Left",        7},
@@ -49,14 +49,14 @@ void AiHandler::parseCommand(size_t playerId, std::vector<std::string> &commands
 
 void AiHandler::run()
 {
-    for (auto& p : _world.players) {
-        auto& queue = p.getPlayerAction();
+    for (auto& [id, player] : _world.players) {
+        auto& queue = player.getPlayerAction();
         playerAction action = queue.front();
         auto now = std::chrono::steady_clock::now();
         if (action.executeAt < now) {
             queue.pop();
-            executeCommand(p.getId(), action.command);
-            p.setWaitTime(p.getWaitTime() - action.time);
+            executeCommand(id, action.command);
+            player.setWaitTime(player.getWaitTime() - action.time);
         }
     }
 }
@@ -85,10 +85,7 @@ void AiHandler::executeCommand(size_t playerId, const std::string &command)
 
 Player &AiHandler::findPlayer(size_t playerId) const
 {
-    for (auto& player : _world.players) {
-        if (player.getId() == playerId)
-            return player;
-    }
+    return _world.players.at(playerId);
 }
 
 Vector2 AiHandler::normalizePos(Vector2 pos) const
