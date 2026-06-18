@@ -2,7 +2,7 @@
 
 from IA_helpers_net import Team_Password
 
-def guess_direction(k):
+def find_direction(k):
     if k == 0:
         return "final_destination"
     if k == 1 or k == 2 or k == 8:
@@ -28,7 +28,7 @@ def run_meeting_for2(state):
     if state["id"] < p:
         return f"Broadcast {Team_Password}:{state['id']}:{state['level']}:rally"
     if p in state["team"]:
-        return guess_direction(state["team"][p]["k"])
+        return find_direction(state["team"][p]["k"])
     return "Look"
 
 
@@ -37,7 +37,7 @@ def run_meeting_for6(state):
         return f"Broadcast {Team_Password}:{state['id']}:{state['level']}:rally"
     balise_id = min(state["team"])
     if balise_id < state["id"]:
-        return guess_direction(state["team"][balise_id]["k"])
+        return find_direction(state["team"][balise_id]["k"])
     return f"Broadcast {Team_Password}:{state['id']}:{state['level']}:rally"
 
 def check_phase2(state):

@@ -53,6 +53,10 @@ def has_recipe(total, level):
             return False
     return True
 
+def need_stone(state, ids, stone, level):
+    have = stone_total(state, ids).get(stone, 0)
+    return have < RECIPES[level][1].get(stone, 0)
+
 def get_id(state):
     return list(state["team"])
 

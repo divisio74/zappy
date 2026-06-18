@@ -9,19 +9,18 @@ import sys
 from IA_helpers_net import Connection, handshake
 from IA_helpers_parsing import get_response, parsing_vision, parsing_stuff, read_incantation_result
 from IA_helpers_together_inv import broadcast_inventory
-from IA_search_mode import search_food, search_food_or_t, search_level1, search_level2, search_level3, search_level4_b6
-from IA_helpers_meeting import check_phase2
+from IA_search_mode import search_food_or_t, search_level1, search_level2, search_level3, search_level4, search_level5, search_level6, search_level7
 
-def Heuristique_policyV1(state):
+def Heuristique_policyV1(state, player_id):
 
+    vision = state["vision"]
+    if vision and "food" in vision[0]:
+        return "Take food"
     food = state["stuff"].get("food", 0)
-    if food < 3:
+    if food < 8:
         state["feeding"] = True
-    elif food >= 8:
+    elif food >= 16:
         state["feeding"] = False
-
-    if food < 3:
-        return search_food(state)
 
     if state.get("feeding"):
         return search_food_or_t(state)
@@ -35,9 +34,17 @@ def Heuristique_policyV1(state):
     if state["level"] == 3:
         return search_level3(state)
 
-    if state["level"] == 4 and check_phase2 == False:
-        return search_level4_b6(state)
+    if state["level"] == 4:
+        return search_level4(state)
 
+    if state["level"] == 5:
+        return search_level5(state)
+
+    if state["level"] == 6:
+        return search_level6(state)
+
+    if state["level"] == 7:
+        return search_level7(state)
 
     return random.choice(["Forward", "Forward", "Left", "Right"])
 
@@ -50,7 +57,7 @@ def run(host, port, team_name, player_id):
     action_len = 0
     level = 1
     child = []
-    state = {"width": width, "height": height, "vision": [], "id": player_id, "last": last, "stuff": {},"level": level, "broadcast": [], "team": {}, "child": False, "feeding": False}
+    state = {"width": width, "height": height, "vision": [], "id": player_id, "last": last, "stuff": {},"level": level, "broadcast": [], "team": {}, "spawned_ids": [], "feeding": False}
     try:
         while True:
             conn.send("Look")
@@ -63,12 +70,12 @@ def run(host, port, team_name, player_id):
             conn.send("Inventory")
             stuff_line = get_response(conn, state)
             state["stuff"] = parsing_stuff(stuff_line)
-            if action_len % 5 == 0:
+            if action_len % 10 == 0:
                 conn.send(broadcast_inventory(state))
                 get_response(conn, state)
 
 
-            command = Heuristique_policyV1(state)
+            command = Heuristique_policyV1(state, player_id)
             state["last"] = command
             action_len = action_len + 1
 
@@ -79,14 +86,24 @@ def run(host, port, team_name, player_id):
                 print(f"vision={state['vision']}  ->  Incantation  ->  {res!r}  (niveau={state['level']})")
                 continue
             if command == "Fork":
-                present = set(state["team"].keys()) | {player_id}
-                free = [i for i in range(1, 7) if i not in present]
-                if free:
-                    child_id = min(free)
+                child_id = None
+                if player_id == 1:
+                    if 2 not in state["spawned_ids"]:
+                        child_id = 2
+                    elif 3 not in state["spawned_ids"]:
+                        child_id = 3
+                    elif 4 not in state["spawned_ids"]:
+                        child_id = 4
+                    elif 5 not in state["spawned_ids"]:
+                        child_id = 5
+                    elif 6 not in state["spawned_ids"]:
+                        child_id = 6
+                if child_id is not None:
                     subprocess.Popen([sys.executable, os.path.abspath(__file__),
                                       "-p", str(port), "-n", team_name,
                                       "-i", str(child_id), "-H", host])
                     print(f"[fork] spawn du joueur {child_id}")
+                    state["spawned_ids"].append(child_id)
                 get_response(conn, state)
                 continue
 
