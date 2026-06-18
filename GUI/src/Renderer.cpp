@@ -2,8 +2,8 @@
 
 Renderer::Renderer()
 {
-    _videoMode.size.x  = 1200;
-    _videoMode.size.y  = 800;
+    _videoMode.size.x  = 1920;
+    _videoMode.size.y  = 1080;
 
     _settings.depthBits      = 24;
     _settings.majorVersion   = 3;
@@ -23,52 +23,23 @@ void Renderer::init()
 
     _shader = std::make_unique<Shader>("shaders/vertex.glsl", "shaders/fragment.glsl");
     _tileMesh = initTile();
-    _playerModel = std::make_unique<Model>("model/player.glb", glm::vec3(20.f), glm::vec3(-90.f, 0.f, 0.f), glm::vec3(0.f));
-}
+    _playersModels = initPlayersModels(NB_PLAYERS);
 
-GLuint Renderer::TextureFromFile(const char *path, const std::string &directory)
-{
-    std::string filename = directory + "/" + path;
-
-    GLuint texId;
-    glGenTextures(1, &texId);
-
-    sf::Image image;
-    image.loadFromFile(filename);
-
-    glBindTexture(GL_TEXTURE_2D, texId);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-                 image.getSize().x, image.getSize().y,
-                 0, GL_RGBA, GL_UNSIGNED_BYTE, image.getPixelsPtr());
-    glGenerateMipmap(GL_TEXTURE_2D);
-
-    return texId;
 }
 
 void Renderer::render()
 {
-    glm::mat4 view       = _camera.getView();
+    glm::mat4 view = _camera.getView();
     glm::mat4 projection = glm::perspective(glm::radians(45.f), 800.f / 600.f, 0.1f, 100.f);
 
-    (*_shader).setMat4("view", view);
-    (*_shader).setMat4("projection", projection);
-
     _shader->use();
+    _shader->setMat4("view", view);
+    _shader->setMat4("projection", projection);
 
     renderMap(WIDTH, HEIGHT);
-    std::unique_ptr<Model> p1 = std::make_unique<Model>("model/player.glb", glm::vec3(20.f), glm::vec3(-90.f, 0.f, 0.f), glm::vec3(0.f));
-    std::unique_ptr<Model> p2 = std::make_unique<Model>("model/player.glb", glm::vec3(20.f), glm::vec3(-90.f, 0.f, 0.f), glm::vec3(0.f));
-    std::unique_ptr<Model> p3 = std::make_unique<Model>("model/player.glb", glm::vec3(20.f), glm::vec3(-90.f, 0.f, 0.f), glm::vec3(0.f));
-    _playerModel->Draw(*_shader, glm::vec3(1.f, 0.5f, 1.f));
-    p1->Draw(*_shader, glm::vec3(3.f, 0.5f, 1.f));
-    p2->Draw(*_shader, glm::vec3(5.f, 0.5f, 1.f));
-    p3->Draw(*_shader, glm::vec3(7.f, 0.5f, 1.f));
 
-
+    for (uint i = 0; i < NB_PLAYERS; i++)
+        _playersModels[i]->Draw(*_shader);
 }
 
 void Renderer::renderMap(uint width, uint height)
@@ -85,20 +56,30 @@ void Renderer::renderTile(float x, float z)
     _tileMesh->Draw(*_shader);
 }
 
+std::vector<std::unique_ptr<Model>> Renderer::initPlayersModels(uint nbPlayers)
+{
+    std::vector<std::unique_ptr<Model>> players;
+    for (uint i = 0; i < nbPlayers; i++) {
+        glm::vec3 position = glm::vec3((i + 5) - 4.5f, 0.5f, 1.f);
+        players.push_back(std::make_unique<Model>("model/Mecha.glb", position, glm::vec3(0.15f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f)));
+    }
+    return std::move(players);
+}
+
 std::unique_ptr<Mesh> Renderer::initTile()
 {
     //Doc : https://learnopengl.com/Getting-started/Hello-Triangle#:~:text=Vertex%20input
 
     std::vector<Vertex> vertices = {
-        {{0.f,  0.5f, 0.f}, {0.f, 0.f, 0.f}, {0.f, 0.f}},
-        {{1.f,  0.5f, 0.f}, {0.f, 0.f, 0.f}, {1.f, 0.f}},
-        {{1.f,  0.5f, 1.f}, {0.f, 0.f, 0.f}, {1.f, 1.f}},
-        {{0.f,  0.5f, 1.f}, {0.f, 0.f, 0.f}, {0.f, 1.f}},
+        {{0.f,  0.f, 0.f}, {0.f, 0.f, 0.f}, {0.f, 0.f}},
+        {{1.f,  0.f, 0.f}, {0.f, 0.f, 0.f}, {1.f, 0.f}},
+        {{1.f,  0.f, 1.f}, {0.f, 0.f, 0.f}, {1.f, 1.f}},
+        {{0.f,  0.f, 1.f}, {0.f, 0.f, 0.f}, {0.f, 1.f}},
 
-        {{0.f, -0.5f, 0.f}, {0.f, 0.f, 0.f}, {0.f, 0.f}},
-        {{1.f, -0.5f, 0.f}, {0.f, 0.f, 0.f}, {1.f, 0.f}},
-        {{1.f, -0.5f, 1.f}, {0.f, 0.f, 0.f}, {1.f, 1.f}},
-        {{0.f, -0.5f, 1.f}, {0.f, 0.f, 0.f}, {0.f, 1.f}},
+        {{0.f, -1.f, 0.f}, {0.f, 0.f, 0.f}, {0.f, 0.f}},
+        {{1.f, -1.f, 0.f}, {0.f, 0.f, 0.f}, {1.f, 0.f}},
+        {{1.f, -1.f, 1.f}, {0.f, 0.f, 0.f}, {1.f, 1.f}},
+        {{0.f, -1.f, 1.f}, {0.f, 0.f, 0.f}, {0.f, 1.f}},
     };
 
     std::vector<unsigned int> indices = {
@@ -110,20 +91,8 @@ std::unique_ptr<Mesh> Renderer::initTile()
         1, 2, 6,  6, 5, 1,
     };
 
-    sf::Image image;
-    image.loadFromFile("textures/rock.jpg");        // UTILISER TEXTURELOADER ICIIII
-
     GLuint texId;
-    glGenTextures(1, &texId);
-    glBindTexture(GL_TEXTURE_2D, texId);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-                 image.getSize().x, image.getSize().y,
-                 0, GL_RGBA, GL_UNSIGNED_BYTE, image.getPixelsPtr());
-    glGenerateMipmap(GL_TEXTURE_2D);
+    texId = TextureLoader::load("grass.jpg");
 
     std::vector<Texture> textures = {{ texId, "texture_diffuse" }};
     return std::make_unique<Mesh>(vertices, indices, textures);
@@ -147,4 +116,16 @@ sf::Window& Renderer::getWindow()
 Camera& Renderer::getCamera()
 {
     return _camera;
+}
+
+std::vector<std::unique_ptr<Model>>& Renderer::getPlayersModels()
+{
+    return _playersModels;
+}
+
+glm::vec3 Renderer::getTileCenter(int x, int z)
+{
+    if (x < WIDTH && z < HEIGHT)
+        return {x + 0.5f, 0.f, z + 0.5f};
+    return {0.5f, 0.f, 0.5f};
 }
