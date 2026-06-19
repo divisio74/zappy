@@ -20,11 +20,11 @@ void Renderer::init()
     glewExperimental = GL_TRUE;
     glewInit();
     glEnable(GL_DEPTH_TEST);
+    srand(time(0));
 
     _shader = std::make_unique<Shader>("shaders/vertex.glsl", "shaders/fragment.glsl");
     _tileMesh = initTile();
     _playersModels = initPlayersModels(NB_PLAYERS);
-
 }
 
 void Renderer::render()
@@ -61,7 +61,7 @@ std::vector<std::unique_ptr<Model>> Renderer::initPlayersModels(uint nbPlayers)
     std::vector<std::unique_ptr<Model>> players;
     for (uint i = 0; i < nbPlayers; i++) {
         glm::vec3 position = glm::vec3((i + 5) - 4.5f, 0.5f, 1.f);
-        players.push_back(std::make_unique<Model>("model/Mecha.glb", position, glm::vec3(0.15f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f)));
+        players.push_back(std::make_unique<Model>("model/FrogMech.glb", position, glm::vec3(0.15f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f)));
     }
     return std::move(players);
 }
@@ -127,5 +127,17 @@ glm::vec3 Renderer::getTileCenter(int x, int z)
 {
     if (x < WIDTH && z < HEIGHT)
         return {x + 0.5f, 0.f, z + 0.5f};
+    return {0.5f, 0.f, 0.5f};
+}
+
+glm::vec3 Renderer::getTileRandPos(int x, int z)
+{
+    if (x < WIDTH && z < HEIGHT)
+    {
+        float offsetX = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+        float offsetZ = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+
+        return {x + offsetX, 0.f, z + offsetZ};
+    }
     return {0.5f, 0.f, 0.5f};
 }

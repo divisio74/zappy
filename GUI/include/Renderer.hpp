@@ -1,9 +1,9 @@
 #pragma once
 
-#define HEIGHT     20
-#define WIDTH      20
+#define HEIGHT     1
+#define WIDTH      1
 #define NB_PLAYERS 1
-#define PLAYERS_MODEL {"Mecha.glb", "Astronaut.glb"}
+#define PLAYERS_MODEL {"Mineralsa.glb", "Astronaut.glb"}
 
 #include <GL/glew.h>
 #include <SFML/Window.hpp>
@@ -44,6 +44,7 @@ class Renderer {
         Camera&                                 getCamera       ();
         std::vector<std::unique_ptr<Model>>&    getPlayersModels();
         glm::vec3 getTileCenter(int x, int z);
+        glm::vec3 getTileRandPos(int x, int z);
 
     private:
         sf::VideoMode                           _videoMode;
