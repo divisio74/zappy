@@ -24,46 +24,55 @@ void Renderer::init()
 
     _shader = std::make_unique<Shader>("shaders/vertex.glsl", "shaders/fragment.glsl");
     _tileMesh = initTile();
-    _playersModels = initPlayersModels(NB_PLAYERS);
 }
 
-void Renderer::render()
+void Renderer::render(GameState& state)
 {
     glm::mat4 view = _camera.getView();
     glm::mat4 projection = glm::perspective(glm::radians(45.f), 800.f / 600.f, 0.1f, 100.f);
+    std::vector<std::vector<Tile>>& map = state.getMap();
 
     _shader->use();
     _shader->setMat4("view", view);
     _shader->setMat4("projection", projection);
 
-    renderMap(WIDTH, HEIGHT);
-
-    for (uint i = 0; i < NB_PLAYERS; i++)
-        _playersModels[i]->Draw(*_shader);
+    renderMap(map);
 }
 
-void Renderer::renderMap(uint width, uint height)
+void Renderer::renderMap(std::vector<std::vector<Tile>>& map)
 {
-    for (uint y = 0; y < height; y++)
-        for (uint x = 0; x < width; x++)
-            renderTile(x, y);
+    for (std::size_t z = 0; z < map.size(); z++) {
+        for (std::size_t x = 0; x < map[z].size(); x++)
+            renderTile(map[z][x], static_cast<float>(x), static_cast<float>(z));
+    }
 }
 
-void Renderer::renderTile(float x, float z)
+void Renderer::renderTile(Tile& tile, float x, float z)
 {
+    tile.x = x;
+    tile.z = z;
+
     glm::mat4 model = glm::translate(glm::mat4(1.f), glm::vec3(x, 0.f, z));
     _shader->setMat4("model", model);
     _tileMesh->Draw(*_shader);
-}
 
-std::vector<std::unique_ptr<Model>> Renderer::initPlayersModels(uint nbPlayers)
-{
-    std::vector<std::unique_ptr<Model>> players;
-    for (uint i = 0; i < nbPlayers; i++) {
-        glm::vec3 position = glm::vec3((i + 5) - 4.5f, 0.5f, 1.f);
-        players.push_back(std::make_unique<Model>("model/FrogMech.glb", position, glm::vec3(0.15f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f)));
+    if (tile.models.empty()) {
+        for (int i = 0; i < tile.linemate; i++)
+            tile.models.push_back(std::make_shared<Model>("model/min_1.glb", getTileRandPos(tile), glm::vec3(0.15f), glm::vec3(0.f), glm::vec3(0.f)));
+        for (int i = 0; i < tile.deraumere; i++)
+            tile.models.push_back(std::make_shared<Model>("model/min_2.glb", getTileRandPos(tile), glm::vec3(0.15f), glm::vec3(0.f), glm::vec3(0.f)));
+        for (int i = 0; i < tile.sibur; i++)
+            tile.models.push_back(std::make_shared<Model>("model/min_3.glb", getTileRandPos(tile), glm::vec3(0.15f), glm::vec3(0.f), glm::vec3(0.f)));
+        for (int i = 0; i < tile.mendiane; i++)
+            tile.models.push_back(std::make_shared<Model>("model/min_4.glb", getTileRandPos(tile), glm::vec3(0.15f), glm::vec3(0.f), glm::vec3(0.f)));
+        for (int i = 0; i < tile.phiras; i++)
+            tile.models.push_back(std::make_shared<Model>("model/min_5.glb", getTileRandPos(tile), glm::vec3(0.15f), glm::vec3(0.f), glm::vec3(0.f)));
+        for (int i = 0; i < tile.thystame; i++)
+            tile.models.push_back(std::make_shared<Model>("model/min_6.glb", getTileRandPos(tile), glm::vec3(0.15f), glm::vec3(0.f), glm::vec3(0.f)));
     }
-    return std::move(players);
+
+    for (auto& resource : tile.models)
+        resource->Draw(*_shader);
 }
 
 std::unique_ptr<Mesh> Renderer::initTile()
@@ -118,26 +127,15 @@ Camera& Renderer::getCamera()
     return _camera;
 }
 
-std::vector<std::unique_ptr<Model>>& Renderer::getPlayersModels()
+glm::vec3 Renderer::getTileCenter(const Tile& tile)
 {
-    return _playersModels;
+    return {tile.x + 0.5f, 0.f, tile.z + 0.5f};
 }
 
-glm::vec3 Renderer::getTileCenter(int x, int z)
+glm::vec3 Renderer::getTileRandPos(const Tile& tile)
 {
-    if (x < WIDTH && z < HEIGHT)
-        return {x + 0.5f, 0.f, z + 0.5f};
-    return {0.5f, 0.f, 0.5f};
-}
+    float offsetX = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+    float offsetZ = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
 
-glm::vec3 Renderer::getTileRandPos(int x, int z)
-{
-    if (x < WIDTH && z < HEIGHT)
-    {
-        float offsetX = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-        float offsetZ = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-
-        return {x + offsetX, 0.f, z + offsetZ};
-    }
-    return {0.5f, 0.f, 0.5f};
+    return {tile.x + offsetX, 0.f, tile.z + offsetZ};
 }
