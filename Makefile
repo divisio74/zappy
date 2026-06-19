@@ -11,7 +11,8 @@ SRC		=	GUI/src/main.cpp		\
 			GUI/src/Player.cpp		\
 			GUI/src/Tiles.cpp \
 			GUI/src/network/ClientSocket.cpp\
-			GUI/src/network/IOSocket.cpp
+			GUI/src/network/IOSocket.cpp \
+			GUI/src/Egg.cpp
  
 OBJ		=	$(SRC:.cpp=.o)
  
