@@ -17,11 +17,11 @@ class GameState {
 
         std::vector<Player> &getPlayers();
         const std::vector<Player> &getPlayers() const;
-        Player *findPlayer(uint32_t id);
+        Player *findPlayer(int id);
 
         std::vector<Egg> &getEggs();
         const std::vector<Egg> &getEggs() const;
-        Egg *findEgg(uint32_t id);
+        Egg *findEgg(int id);
 
         const std::vector<std::string> &getTeams() const;
 
@@ -30,7 +30,7 @@ class GameState {
         const std::string &getWinner() const;
 
         void addEgg(const Egg &egg);
-        void removeEgg(uint32_t id);
+        void removeEgg(int id);
 
         void setSize(int width, int height);
         void addTeam(const std::string &name);

@@ -35,7 +35,7 @@ const std::vector<Player> &GameState::getPlayers() const
     return _players;
 }
 
-Player *GameState::findPlayer(uint32_t id)
+Player *GameState::findPlayer(int id)
 {
     for (auto &p : _players)
         if (p._id == id)
@@ -53,7 +53,7 @@ const std::vector<Egg> &GameState::getEggs() const
     return _eggs;
 }
 
-Egg *GameState::findEgg(uint32_t id)
+Egg *GameState::findEgg(int id)
 {
     for (auto &e : _eggs) {
         if (e._id == id)
@@ -104,7 +104,7 @@ void GameState::addEgg(const Egg &egg)
     _eggs.push_back(egg);
 }
 
-void GameState::removeEgg(uint32_t id)
+void GameState::removeEgg(int id)
 {
     for (std::size_t i = 0; i < _eggs.size(); i++) {
         if (_eggs[i]._id == id) {
