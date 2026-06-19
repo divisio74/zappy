@@ -5,12 +5,12 @@
 
 struct Player {
     int _id;
+    int _x;
+    int _y;
     int _orientation;
     int _level;
     std::string _teamName;
     bool _isAlive;
-    int _x;
-    int _y;
     int _food;
     int _linemate;
     int _deraumere;
