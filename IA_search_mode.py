@@ -5,6 +5,7 @@ import random
 
 from IA_helpers_meeting import run_meeting_for6
 from IA_helpers_together_inv import team_thystame, stone_total, has_recipe, get_id, need_stone
+from IA_navigation import forage
 
 
 def search_food_or_t(state):
@@ -15,27 +16,8 @@ def search_food_or_t(state):
         return "Take thystame"
     if "food" in vision[0]:
         return "Take food"
-    if state["last"] == "Right":
-        return "Forward"
-    if state["last"] == "Left":
-        return "Forward"
-    for i in range(len(vision)):
-        y = int(math.sqrt(i))
-        xx = y * (y + 1)
-        x = i - xx
-        if total_thyst and "thystame" in vision[xx]:
-            return "Forward"
-        if total_thyst and x < 0 and "thystame" in vision[i]:
-            return "Left"
-        if total_thyst and x > 0 and "thystame" in vision[i]:
-            return "Right"
-        if "food" in vision[xx]:
-            return "Forward"
-        if x < 0 and "food" in vision[i]:
-            return "Left"
-        if x > 0 and "food" in vision[i]:
-            return "Right"
-    return random.choice(["Forward", "Forward", "Left", "Right"])
+    targets = ["food", "thystame"] if total_thyst else ["food"]
+    return forage(state, targets)
 
 
 def search_level1(state):
@@ -126,7 +108,7 @@ def search_level3(state):
         return "Look"
     if comp == True:
         verdicte = run_meeting_for6(state)
-        if verdicte == "Unknow k" or verdicte == "final_destination":
+        if verdicte == "final_destination":
             return "Look"
         return verdicte
     if "phiras" in vision[0] and need_stone(state, ids, "phiras", 3):

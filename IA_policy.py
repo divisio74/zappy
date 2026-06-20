@@ -9,18 +9,21 @@ import sys
 from IA_helpers_net import Connection, handshake
 from IA_helpers_parsing import get_response, parsing_vision, parsing_stuff, read_incantation_result
 from IA_helpers_together_inv import broadcast_inventory
+from IA_navigation import update_nav
 from IA_search_mode import search_food_or_t, search_level1, search_level2, search_level3, search_level4, search_level5, search_level6, search_level7
 
 def Heuristique_policyV1(state, player_id):
 
-    vision = state["vision"]
-    if vision and "food" in vision[0]:
-        return "Take food"
     food = state["stuff"].get("food", 0)
-    if food < 8:
+    vision = state["vision"]
+    if vision and "food" in vision[0] and food <= 17:
+        return "Take food"
+    near_gather = bool(vision) and vision[0].count("player") >= 5
+    if food < 6 or (food < 8 and not near_gather):
         state["feeding"] = True
-    elif food >= 16:
+    elif food >= 16 or (near_gather and food >= 8):
         state["feeding"] = False
+
 
     if state.get("feeding"):
         return search_food_or_t(state)
@@ -29,22 +32,33 @@ def Heuristique_policyV1(state, player_id):
         return search_level1(state)
 
     if state["level"] == 2:
-        return search_level2(state)
+        verdicte = search_level2(state)
+        return verdicte
 
     if state["level"] == 3:
-        return search_level3(state)
+        verdicte = search_level3(state)
+
+        return verdicte
 
     if state["level"] == 4:
-        return search_level4(state)
+        verdicte = search_level4(state)
+
+        return verdicte
 
     if state["level"] == 5:
-        return search_level5(state)
+        verdicte = search_level5(state)
+
+        return verdicte
 
     if state["level"] == 6:
-        return search_level6(state)
+        verdicte = search_level6(state)
+
+        return verdicte
 
     if state["level"] == 7:
-        return search_level7(state)
+        verdicte = search_level7(state)
+
+        return verdicte
 
     return random.choice(["Forward", "Forward", "Left", "Right"])
 
@@ -77,6 +91,7 @@ def run(host, port, team_name, player_id):
 
             command = Heuristique_policyV1(state, player_id)
             state["last"] = command
+            update_nav(state, command)
             action_len = action_len + 1
 
 
