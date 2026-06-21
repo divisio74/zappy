@@ -12,18 +12,38 @@ from IA_helpers_together_inv import broadcast_inventory
 from IA_navigation import update_nav
 from IA_search_mode import search_food_or_t, search_level1, search_level2, search_level3, search_level4, search_level5, search_level6, search_level7
 
-def Heuristique_policyV1(state, player_id):
+def handle_fork(state, player_id, host, port, team_name):
+    child_id = None
+    if player_id == 1:
+        if 2 not in state["spawned_ids"]:
+            child_id = 2
+        elif 3 not in state["spawned_ids"]:
+            child_id = 3
+        elif 4 not in state["spawned_ids"]:
+            child_id = 4
+        elif 5 not in state["spawned_ids"]:
+            child_id = 5
+        elif 6 not in state["spawned_ids"]:
+            child_id = 6
+    if child_id is not None:
+        subprocess.Popen([sys.executable, os.path.abspath(__file__),
+        "-p", str(port), "-n", team_name, "-i", str(child_id), "-H", host])
+        print(f"[fork] spawn du joueur {child_id}")
+        state["spawned_ids"].append(child_id)
+    return child_id
+
+
+def Heuristique_policyV2(state, player_id):
 
     food = state["stuff"].get("food", 0)
     vision = state["vision"]
-    if vision and "food" in vision[0] and food <= 17:
+    if vision and "food" in vision[0] and food <= 16:
         return "Take food"
-    near_gather = bool(vision) and vision[0].count("player") >= 5
-    if food < 6 or (food < 8 and not near_gather):
+    greedy = bool(vision) and vision[0].count("player") >= 5
+    if food < 6 or (food < 8 and not greedy):
         state["feeding"] = True
-    elif food >= 16 or (near_gather and food >= 8):
+    elif food >= 16 or (greedy and food >= 8):
         state["feeding"] = False
-
 
     if state.get("feeding"):
         return search_food_or_t(state)
@@ -32,33 +52,22 @@ def Heuristique_policyV1(state, player_id):
         return search_level1(state)
 
     if state["level"] == 2:
-        verdicte = search_level2(state)
-        return verdicte
+        return search_level2(state)
 
     if state["level"] == 3:
-        verdicte = search_level3(state)
-
-        return verdicte
+        return search_level3(state)
 
     if state["level"] == 4:
-        verdicte = search_level4(state)
-
-        return verdicte
+        return search_level4(state)
 
     if state["level"] == 5:
-        verdicte = search_level5(state)
-
-        return verdicte
+        return search_level5(state)
 
     if state["level"] == 6:
-        verdicte = search_level6(state)
-
-        return verdicte
+        return search_level6(state)
 
     if state["level"] == 7:
-        verdicte = search_level7(state)
-
-        return verdicte
+        return search_level7(state)
 
     return random.choice(["Forward", "Forward", "Left", "Right"])
 
@@ -66,18 +75,17 @@ def Heuristique_policyV1(state, player_id):
 def run(host, port, team_name, player_id):
     conn = Connection(host, port)
     slots, width, height = handshake(conn, team_name)
-    print(f"[handshake] slots restants={slots}  map={width}x{height}")
+    print(f"[handshake] Validé : slots restants={slots}  map={width}x{height}")
     last = ""
     action_len = 0
     level = 1
-    child = []
     state = {"width": width, "height": height, "vision": [], "id": player_id, "last": last, "stuff": {},"level": level, "broadcast": [], "team": {}, "spawned_ids": [], "feeding": False}
     try:
         while True:
             conn.send("Look")
             look_line = get_response(conn, state)
             if look_line == "dead":
-                print("[mort] l'entité est morte de faim.")
+                print("[mort] L'entité est morte de faim.")
                 break
             state["vision"] = parsing_vision(look_line)
 
@@ -88,44 +96,25 @@ def run(host, port, team_name, player_id):
                 conn.send(broadcast_inventory(state))
                 get_response(conn, state)
 
-
-            command = Heuristique_policyV1(state, player_id)
+            command = Heuristique_policyV2(state, player_id)
             state["last"] = command
             update_nav(state, command)
             action_len = action_len + 1
 
-
             conn.send(command)
             if command == "Incantation":
                 res = read_incantation_result(conn, state)
-                print(f"vision={state['vision']}  ->  Incantation  ->  {res!r}  (niveau={state['level']})")
+                print(f"Vision={state['vision']}  ->  Incantation  ->  {res!r}  (Niveau={state['level']})")
                 continue
+
             if command == "Fork":
-                child_id = None
-                if player_id == 1:
-                    if 2 not in state["spawned_ids"]:
-                        child_id = 2
-                    elif 3 not in state["spawned_ids"]:
-                        child_id = 3
-                    elif 4 not in state["spawned_ids"]:
-                        child_id = 4
-                    elif 5 not in state["spawned_ids"]:
-                        child_id = 5
-                    elif 6 not in state["spawned_ids"]:
-                        child_id = 6
-                if child_id is not None:
-                    subprocess.Popen([sys.executable, os.path.abspath(__file__),
-                                      "-p", str(port), "-n", team_name,
-                                      "-i", str(child_id), "-H", host])
-                    print(f"[fork] spawn du joueur {child_id}")
-                    state["spawned_ids"].append(child_id)
+                handle_fork(state, player_id, host, port, team_name)
                 get_response(conn, state)
                 continue
 
             reply = get_response(conn, state)
-            print(f"vision={state['vision']}  ->  {command}  ->  {reply!r}")
             if reply == "dead":
-                print("[mort] l'entité est morte de faim.")
+                print("[mort] L'entité est morte de faim.")
                 break
 
     except (ConnectionError, KeyboardInterrupt) as e:

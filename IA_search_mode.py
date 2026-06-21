@@ -5,7 +5,7 @@ import random
 
 from IA_helpers_meeting import run_meeting_for6
 from IA_helpers_together_inv import team_thystame, stone_total, has_recipe, get_id, need_stone
-from IA_navigation import forage
+from IA_navigation import food_opti
 
 
 def search_food_or_t(state):
@@ -17,7 +17,7 @@ def search_food_or_t(state):
     if "food" in vision[0]:
         return "Take food"
     targets = ["food", "thystame"] if total_thyst else ["food"]
-    return forage(state, targets)
+    return food_opti(state, targets)
 
 
 def search_level1(state):

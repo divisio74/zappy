@@ -39,28 +39,28 @@ def index_to_rc(i):
     return y, i - y * (y + 1)
 
 
-def _has(vision, i, names):
+def name_in_vision(vision, i, names):
     return i < len(vision) and any(n in vision[i] for n in names)
 
 
-def forage(state, names):
+def food_opti(state, names):
     init_nav(state)
     vision = state["vision"]
     just_turned = state.get("last") in ("Left", "Right")
-    if _has(vision, 2, names):
+    if name_in_vision(vision, 2, names):
         return "Forward"
-    if _has(vision, 1, names) and not just_turned:
+    if name_in_vision(vision, 1, names) and not just_turned:
         return "Left"
-    if _has(vision, 3, names) and not just_turned:
+    if name_in_vision(vision, 3, names) and not just_turned:
         return "Right"
     for i in range(4, len(vision)):
         y, x = index_to_rc(i)
         if x == 0 and any(n in vision[i] for n in names):
             return "Forward"
-    return explore(state)
+    return explore_with_random(state)
 
 
-def explore(state):
+def explore_with_random(state):
     init_nav(state)
     w = state.get("width") or 1
     h = state.get("height") or 1
@@ -68,8 +68,7 @@ def explore(state):
     x, y = state["pos"]
     options = []
     for cmd, face in (("Forward", state["facing"]),
-                      ("Left", (state["facing"] - 1) % 4),
-                      ("Right", (state["facing"] + 1) % 4)):
+        ("Left", (state["facing"] - 1) % 4),("Right", (state["facing"] + 1) % 4)):
         dx, dy = DIRS[face]
         cell = ((x + dx) % w, (y + dy) % h)
         last_seen = visited.get(cell, -1)

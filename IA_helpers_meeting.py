@@ -17,7 +17,6 @@ def find_direction(k, state):
     return random.choice(["Forward", "Left", "Right"])
 
 
-
 def homing_vision(state):
     vision = state["vision"]
     best = -1
@@ -54,11 +53,3 @@ def run_meeting_for6(state):
         state["acted_seq"] = info.get("seq")
         return find_direction(info["k"], state)
     return f"Broadcast {Team_Password}:{state['id']}:{state['level']}:rally"
-
-def check_phase2(state):
-    for info in state["team"].values():
-        if info["level"] < 4:
-            return False
-    if len(state["team"]) != 5:
-        return False
-    return True
