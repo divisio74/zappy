@@ -1,7 +1,59 @@
 #include "../include/NetworkProtocol.hpp"
 #include <iostream>
 #include <sstream>
- 
+
+static void addResourcePlayer(Player &player, int resourceIndex)
+{
+    switch (resourceIndex) {
+        case 0: player._food++; break;
+        case 1: player._linemate++; break;
+        case 2: player._deraumere++; break;
+        case 3: player._sibur++; break;
+        case 4: player._mendiane++; break;
+        case 5: player._phiras++; break;
+        case 6: player._thystame++; break;
+    }
+}
+
+static void removeResourcePlayer(Player &player, int resourceIndex)
+{
+    switch (resourceIndex) {
+        case 0: player._food--; break;
+        case 1: player._linemate--; break;
+        case 2: player._deraumere--; break;
+        case 3: player._sibur--; break;
+        case 4: player._mendiane--; break;
+        case 5: player._phiras--; break;
+        case 6: player._thystame--; break;
+    }
+}
+
+static void addResourceTile(Tile &tile, int resourceIndex)
+{
+    switch (resourceIndex) {
+        case 0: tile.food++; break;
+        case 1: tile.linemate++; break;
+        case 2: tile.deraumere++; break;
+        case 3: tile.sibur++; break;
+        case 4: tile.mendiane++; break;
+        case 5: tile.phiras++; break;
+        case 6: tile.thystame++; break;
+    }
+}
+
+static void removeResourceTile(Tile &tile, int resourceIndex)
+{
+    switch (resourceIndex) {
+        case 0: tile.food--; break;
+        case 1: tile.linemate--; break;
+        case 2: tile.deraumere--; break;
+        case 3: tile.sibur--; break;
+        case 4: tile.mendiane--; break;
+        case 5: tile.phiras--; break;
+        case 6: tile.thystame--; break;
+    }
+}
+
 void NetworkProtocol::poll(GameState &state)
 {
     std::vector<std::string> lines = receive();
@@ -47,48 +99,196 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
     }
 
     else if (cmd == "pnw") {
+        std::string idstr;
+        int x = 0;
+        int y = 0;
+        int orientation = 0;
+        int level = 0;
+        std::string teamName;
+        words >> idstr >> x >> y >> orientation >> level >> teamName;
+
+        int id = std::stoi(idstr.substr(1));
+
+        Player newPlayer;
+        newPlayer._id = id;
+        newPlayer._x = x;
+        newPlayer._y = y;
+        newPlayer._orientation = orientation;
+        newPlayer._level = level;
+        newPlayer._teamName = teamName;
+        newPlayer._isAlive = true;
+        state.addPlayer(newPlayer);
     }
 
     else if (cmd == "ppo") {
+        std::string idstr;
+        int x = 0;
+        int y = 0;
+        int orientation = 0;
+        words >> idstr >> x >> y >> orientation;
+        int id = std::stoi(idstr.substr(1));
+
+        Player *player = state.findPlayer(id);
+        if (player != nullptr) {
+            player->_x = x;
+            player->_y = y;
+            player->_orientation = orientation;
+        }
     }
 
     else if (cmd == "plv") {
+        std::string idstr;
+        int level = 0;
+
+        words >> idstr >> level;
+        int id = std::stoi(idstr.substr(1));
+
+        Player *player = state.findPlayer(id);
+        if (player != nullptr)
+            player->_level = level;
     }
 
     else if (cmd == "pin") {
+        std::string idstr;
+        int x = 0;
+        int y = 0;
+
+        words >> idstr;
+        int id = std::stoi(idstr.substr(1));
+        Player *player = state.findPlayer(id);
+        if (player != nullptr) {
+            words >> x >> y;
+            words >> player->_food >> player->_linemate >> player->_deraumere
+                >> player->_sibur >> player->_mendiane >> player->_phiras
+                >> player->_thystame;
+        }
     }
 
     else if (cmd == "pex") {
+        std::string idStr;
+        words >> idStr;
+        int id = std::stoi(idStr.substr(1));
+
+        std::cout << "[expulsion] joueur " << id << "\n";
     }
 
     else if (cmd == "pbc") {
+        std::string idstr;
+        std::string message;
+
+        words >> idstr;
+        std::getline(words, message);
+        std::cout << "[broadcast " << idstr << "]" << message << "\n";
     }
 
     else if (cmd == "pic") {
+        int x = 0;
+        int y = 0;
+        int level = 0;
+        std::string idstr;
+        int id = 0;
+
+        words >> x >> y >> level;
+        std::cout << "[incantation] debut en (" << x << "," << y
+            << ") niveau " << level << "\n";
+        
+        while (words >> idstr) {
+            id = std::stoi(idstr.substr(1));
+            std::cout << id << " ";
+        }
+        std::cout << "\n";
     }
 
     else if (cmd == "pie") {
+        int x = 0;
+        int y = 0;
+        std::string result;
+
+        words >> x >> y >> result;
+        std::cout << "[incantation] fin en (" << x << "," << y
+            << ") resultat " << result << "\n";
     }
 
     else if (cmd == "pfk") {
+        std::string idStr;
+
+        words >> idStr;
+        int id = std::stoi(idStr.substr(1));
+
+        std::cout << "[ponte] joueur " << id << " vient de pondre un oeuf\n";
     }
 
     else if (cmd == "pdr") {
+        std::string idsrtr;
+        int resourceIndex = 0;
+
+        words >> idsrtr >> resourceIndex;
+        int id = std::stoi(idsrtr.substr(1));
+
+        Player *player = state.findPlayer(id);
+        if (player != nullptr) {
+            removeResourcePlayer(*player, resourceIndex);
+            Tile &t = state.getTile(player->_x, player->_y);
+            addResourceTile(t, resourceIndex);
+        }
     }
 
     else if (cmd == "pgt") {
+        std::string idStr;
+        int resourceIndex = 0;
+
+        words >> idStr >> resourceIndex;
+        int id = std::stoi(idStr.substr(1));
+        Player *player = state.findPlayer(id);
+        if (player != nullptr) {
+            addResourcePlayer(*player, resourceIndex);
+            Tile &t = state.getTile(player->_x, player->_y);
+            removeResourceTile(t, resourceIndex);
+        }
     }
 
     else if (cmd == "pdi") {
+        std::string idstr;
+
+        words >> idstr;
+        int id = std::stoi(idstr.substr(1));
+
+        Player *player = state.findPlayer(id);
+        if (player != nullptr)
+            player->_isAlive = false;
     }
 
     else if (cmd == "enw") {
+        std::string eggidstr;
+        std::string playeridstr;
+        int x = 0;
+        int y = 0;
+
+        words >> eggidstr >> playeridstr >> x >> y;
+
+        Egg newEgg;
+        newEgg._id = std::stoi(eggidstr.substr(1));
+        newEgg._playerId = std::stoi(playeridstr.substr(1));
+        newEgg._x = x;
+        newEgg._y = y;
+        newEgg._isAlive = true;
+        state.addEgg(newEgg);
     }
 
     else if (cmd == "ebo") {
+        std::string eggidstr;
+
+        words >> eggidstr;
+        int id = std::stoi(eggidstr.substr(1));
+        state.removeEgg(id);
     }
 
     else if (cmd == "edi") {
+        std::string eggidstr;
+
+        words >> eggidstr;
+        int id = std::stoi(eggidstr.substr(1));
+        state.removeEgg(id);
     }
 
     else if (cmd == "sgt") {

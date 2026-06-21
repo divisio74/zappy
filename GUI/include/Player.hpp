@@ -4,11 +4,20 @@
 #include <cstdint>
 
 struct Player {
-    uint32_t _id;
+    int _id;
+    int _x;
+    int _y;
     int _orientation;
-    uint32_t _level;
+    int _level;
     std::string _teamName;
     bool _isAlive;
-    std::tuple<int, int> _pos;
+    int _food;
+    int _linemate;
+    int _deraumere;
+    int _sibur;
+    int _mendiane;
+    int _phiras;
+    int _thystame;
+
     Player();
 };

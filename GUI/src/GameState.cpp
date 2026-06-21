@@ -36,11 +36,30 @@ const std::vector<Player> &GameState::getPlayers() const
     return _players;
 }
 
-Player *GameState::findPlayer(uint32_t id)
+Player *GameState::findPlayer(int id)
 {
     for (auto &p : _players)
         if (p._id == id)
             return &p;
+    return nullptr;
+}
+
+std::vector<Egg> &GameState::getEggs()
+{
+    return _eggs;
+}
+
+const std::vector<Egg> &GameState::getEggs() const
+{
+    return _eggs;
+}
+
+Egg *GameState::findEgg(int id)
+{
+    for (auto &e : _eggs) {
+        if (e._id == id)
+            return &e;
+    }
     return nullptr;
 }
 
@@ -84,6 +103,21 @@ void GameState::addTeam(const std::string &name)
 void GameState::addPlayer(const Player &player)
 {
     _players.push_back(player);
+}
+
+void GameState::addEgg(const Egg &egg)
+{
+    _eggs.push_back(egg);
+}
+
+void GameState::removeEgg(int id)
+{
+    for (std::size_t i = 0; i < _eggs.size(); i++) {
+        if (_eggs[i]._id == id) {
+            _eggs.erase(_eggs.begin() + i);
+            return;
+        }
+    }
 }
 
 void GameState::setTimeUnit(int t)
