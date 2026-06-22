@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstddef>
-#include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -10,13 +10,15 @@
 #include "core/world/WorldData.hpp"
 #include "core/world/WorldHandling.hpp"
 #include "network/SocketRegistry.hpp"
+#include "parser/Parser.hpp"
 
 class Core {
 public:
     Core();
-    Core(std::uint16_t port, std::size_t width, std::size_t height,
-        const std::vector<std::string> &teamNames, std::size_t clientsNb,
-        std::size_t frequency);
+    explicit Core(const ServerConfig &config);
+
+    void runServer();
+    void processServerTick();
 
     WorldData &getWorldData();
     const WorldData &getWorldData() const;
@@ -27,9 +29,22 @@ public:
     WorldHandling &getWorldHandling();
 
 private:
+    void processClientCommands(std::size_t socketId);
+    void greetNewClient(std::size_t socketId);
+    void identifyClient(std::size_t socketId, const std::string &command);
+    void processAiClientCommand(std::size_t socketId,
+        const std::string &command);
+    void processGuiClientCommand(std::size_t socketId,
+        const std::string &command);
+    void cleanupDisconnectedClient(std::size_t socketId);
+    std::optional<std::size_t> findTeamByName(const std::string &teamName) const;
+    std::optional<std::size_t> spawnPlayerFromTeamEgg(std::size_t teamId);
+
     WorldData _worldData;
     WorldHandling _worldHandling;
     SocketRegistry _socketRegistry;
     GuiHandler _guiHandler;
     AiHandler _aiHandler;
+    std::vector<std::string> _teamNames;
+    std::size_t _nextPlayerId;
 };

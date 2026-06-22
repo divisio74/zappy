@@ -254,5 +254,33 @@ void AiHandler::execConnectNbr(Player &player)
 
 void AiHandler::execFork(Player &player)
 {
-    
+    addMessage(player.getId(), "ko");
+}
+
+void AiHandler::execEject(Player &player)
+{
+    addMessage(player.getId(), "ko");
+}
+
+void AiHandler::execIncantation(Player &player)
+{
+    addMessage(player.getId(), "ko");
+}
+
+void AiHandler::execBroadcast(Player &player, const std::string &text)
+{
+    static_cast<void>(text);
+    addMessage(player.getId(), "ko");
+}
+
+void AiHandler::execTake(Player &player, const std::string &object)
+{
+    static_cast<void>(object);
+    addMessage(player.getId(), "ko");
+}
+
+void AiHandler::execSet(Player &player, const std::string &object)
+{
+    static_cast<void>(object);
+    addMessage(player.getId(), "ko");
 }
