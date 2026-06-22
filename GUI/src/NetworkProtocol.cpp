@@ -230,6 +230,7 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
             removeResourcePlayer(*player, resourceIndex);
             Tile &t = state.getTile(player->_x, player->_y);
             addResourceTile(t, resourceIndex);
+            t.models.clear();
         }
     }
 
@@ -244,6 +245,7 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
             addResourcePlayer(*player, resourceIndex);
             Tile &t = state.getTile(player->_x, player->_y);
             removeResourceTile(t, resourceIndex);
+            t.models.clear();
         }
     }
 

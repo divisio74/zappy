@@ -40,6 +40,8 @@ class Renderer {
         glm::vec3 getTileCenter (const Tile& tile);
         glm::vec3 getTileRandPos(const Tile& tile);
 
+        std::vector<std::shared_ptr<Model>>         _playersModels;
+
     private:
         sf::VideoMode              _videoMode;
         sf::ContextSettings        _settings;

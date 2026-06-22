@@ -36,6 +36,16 @@ void Renderer::render(GameState& state)
     _shader->setMat4("view", view);
     _shader->setMat4("projection", projection);
 
+    for (auto& player : state.getPlayers()) {
+        std::cout << "player :" << player._id << "created" << std::endl;
+        _playersModels.push_back(std::make_shared<Model>("model/Astronaut.glb", getTileRandPos(state.getTile(player._x, player._y)), glm::vec3(0.15f), glm::vec3(0.f), glm::vec3(0.f)));
+    }
+
+    for (auto& player : _playersModels) {
+        std::cout << "player drawn" << std::endl;
+        player->Draw(*_shader);
+    }
+
     renderMap(map);
 }
 
@@ -69,6 +79,8 @@ void Renderer::renderTile(Tile& tile, float x, float z)
             tile.models.push_back(std::make_shared<Model>("model/min_5.glb", getTileRandPos(tile), glm::vec3(0.15f), glm::vec3(0.f), glm::vec3(0.f)));
         for (int i = 0; i < tile.thystame; i++)
             tile.models.push_back(std::make_shared<Model>("model/min_6.glb", getTileRandPos(tile), glm::vec3(0.15f), glm::vec3(0.f), glm::vec3(0.f)));
+        for (int i = 0; i < tile.food; i++)
+            tile.models.push_back(std::make_shared<Model>("model/Food.glb", getTileRandPos(tile), glm::vec3(200.f), glm::vec3(0.f), glm::vec3(0.f)));
     }
 
     for (auto& resource : tile.models)
