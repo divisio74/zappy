@@ -19,7 +19,7 @@ void Gui::run()
     glClearColor(0.1f, 0.1f, 0.15f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    _renderer.render(_state);
+    _renderer.render(_state, deltaTime);
     _renderer.getWindow().display();
 }
 

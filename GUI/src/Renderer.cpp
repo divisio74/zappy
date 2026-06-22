@@ -1,5 +1,21 @@
 #include "Renderer.hpp"
 
+static glm::vec3 getPlayerRotation(int orientation)
+{
+    switch (orientation) {
+        case 1:
+            return glm::vec3(0.f, 180.f, 0.f);
+        case 2:
+            return glm::vec3(0.f, 90.f, 0.f);
+        case 3:
+            return glm::vec3(0.f, 0.f, 0.f);
+        case 4:
+            return glm::vec3(0.f, -90.f, 0.f);
+        default:
+            return glm::vec3(0.f, 180.f, 0.f);
+    }
+}
+
 Renderer::Renderer()
 {
     _videoMode.size.x  = 1920;
@@ -26,7 +42,7 @@ void Renderer::init()
     _tileMesh = initTile();
 }
 
-void Renderer::render(GameState& state)
+void Renderer::render(GameState& state, float deltaTime)
 {
     glm::mat4 view = _camera.getView();
     glm::mat4 projection = glm::perspective(glm::radians(45.f), 800.f / 600.f, 0.1f, 100.f);
@@ -36,15 +52,35 @@ void Renderer::render(GameState& state)
     _shader->setMat4("view", view);
     _shader->setMat4("projection", projection);
 
-    for (auto& player : state.getPlayers()) {
-        std::cout << "player :" << player._id << "created" << std::endl;
-        _playersModels.push_back(std::make_shared<Model>("model/Astronaut.glb", getTileRandPos(state.getTile(player._x, player._y)), glm::vec3(0.15f), glm::vec3(0.f), glm::vec3(0.f)));
+    for (int playerId : state._playerToUpt) {
+        auto modelIt = _playersModels.find(playerId);
+
+        if (modelIt != _playersModels.end()) {
+            uptPlayerModel(modelIt->first, modelIt->second, state);
+        } else {
+            Player *player = state.findPlayer(playerId);
+
+            if (player != nullptr) {
+                _playersModels.insert({
+                    playerId,
+                    std::make_shared<Model>(
+                        "model/FrogMech.glb",
+                        getTileRandPos(state.getTile(player->_x, player->_y)),
+                        glm::vec3(0.15f),
+                        getPlayerRotation(player->_orientation),
+                        glm::vec3(0.f)
+                    )
+                });
+            }
+        }
     }
 
     for (auto& player : _playersModels) {
-        std::cout << "player drawn" << std::endl;
-        player->Draw(*_shader);
+        player.second->updateAnimation(deltaTime, "walk");
+        player.second->Draw(*_shader);
     }
+
+    state._playerToUpt.clear();
 
     renderMap(map);
 }
@@ -117,6 +153,35 @@ std::unique_ptr<Mesh> Renderer::initTile()
 
     std::vector<Texture> textures = {{ texId, "texture_diffuse" }};
     return std::make_unique<Mesh>(vertices, indices, textures);
+}
+
+void Renderer::initPlayersModels(GameState& state)
+{
+    for (auto& [id, player] : state.getPlayers()) {
+        _playersModels.insert({id, std::make_shared<Model>(
+            "model/FrogMech.glb",
+            getTileRandPos(state.getTile(player._x, player._y)),
+            glm::vec3(0.15f),
+            getPlayerRotation(player._orientation),
+            glm::vec3(0.f)
+        )});
+    }
+}
+
+void Renderer::uptPlayerModel(int playerId, std::shared_ptr<Model> &playerModel, GameState& state)
+{
+    Player *player = state.findPlayer(playerId);
+
+    if (player == nullptr)
+        return;
+    if (player->_isAlive) {
+        playerModel->moveTo(
+            glm::vec3(player->_x, 0.f, player->_y),
+            getPlayerRotation(player->_orientation)
+        );
+    } else {
+        _playersModels.erase(playerId);
+    }
 }
 
 const sf::VideoMode& Renderer::getVideoMode() const

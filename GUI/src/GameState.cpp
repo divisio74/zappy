@@ -26,21 +26,21 @@ const Tile &GameState::getTile(int x, int y) const
     return _map[y][x];
 }
 
-std::vector<Player> &GameState::getPlayers()
+std::map<int, Player> &GameState::getPlayers()
 {
     return _players;
 }
 
-const std::vector<Player> &GameState::getPlayers() const
+const std::map<int, Player> &GameState::getPlayers() const
 {
     return _players;
 }
 
 Player *GameState::findPlayer(int id)
 {
-    for (auto &p : _players)
-        if (p._id == id)
-            return &p;
+    auto player = _players.find(id);
+    if (player != _players.end())
+        return &player->second;
     return nullptr;
 }
 
@@ -102,7 +102,7 @@ void GameState::addTeam(const std::string &name)
 
 void GameState::addPlayer(const Player &player)
 {
-    _players.push_back(player);
+    _players[player._id] = player;
 }
 
 void GameState::addEgg(const Egg &egg)

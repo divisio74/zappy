@@ -118,6 +118,7 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
         newPlayer._teamName = teamName;
         newPlayer._isAlive = true;
         state.addPlayer(newPlayer);
+        state._playerToUpt.push_back(newPlayer._id);
     }
 
     else if (cmd == "ppo") {
@@ -133,6 +134,7 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
             player->_x = x;
             player->_y = y;
             player->_orientation = orientation;
+            state._playerToUpt.push_back(player->_id);
         }
     }
 
@@ -256,8 +258,10 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
         int id = std::stoi(idstr.substr(1));
 
         Player *player = state.findPlayer(id);
-        if (player != nullptr)
+        if (player != nullptr) {
             player->_isAlive = false;
+            state._playerToUpt.push_back(player->_id);
+        }
     }
 
     else if (cmd == "enw") {

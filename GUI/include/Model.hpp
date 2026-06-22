@@ -26,20 +26,21 @@ class Model
         Model(
             const std::string& path, 
             glm::vec3 position  = glm::vec3(0.f, 0.f, 0.f),
-            glm::vec3 scale     = glm::vec3(1.f),
-            glm::vec3 rotation  = glm::vec3(0.f),
-            glm::vec3 offset    = glm::vec3(0.f)
+            glm::vec3 scale     = glm::vec3(1.f, 0.f, 0.f),
+            glm::vec3 rotation  = glm::vec3(0.f, 0.f, 0.f),
+            glm::vec3 offset    = glm::vec3(0.f, 0.f, 0.f)
         );
 
         void Draw(Shader &shader);
         void updateAnimation(float deltaTime, const std::optional<std::string>& animName = std::nullopt);
-        void moveTo(glm::vec3 position);
+        void moveTo(glm::vec3 position, glm::vec3 rotation);
 
     private:
         const aiScene*              _scene = nullptr;
         Assimp::Importer            _importer;
         std::vector<Mesh>           _meshes;
         std::string                 _directory;
+        glm::mat4                   _globalInverseTransform = glm::mat4(1.f);
         glm::vec3                   _position;
         glm::vec3                   _scale;
         glm::vec3                   _rotation;
@@ -53,7 +54,7 @@ class Model
         void loadModel(const std::string& path);
         void processNode(aiNode *node, const aiScene *scene);
         Mesh processMesh(aiMesh *mesh, const aiScene *scene);
-        void processNodeAnimation(aiNode* node, const glm::mat4& parentTransform);
+        void processNodeAnimation(aiNode* node, const glm::mat4& parentTransform, aiAnimation *anim);
         void setAnim(const std::string& animName);
         glm::vec3 interpolatePosition(aiNodeAnim *channel);
         glm::quat interpolateRotation(aiNodeAnim *channel);

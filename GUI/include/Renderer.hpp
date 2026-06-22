@@ -33,14 +33,16 @@ class Renderer {
         Camera&                 getCamera       ();
 
         void init();
-        void render(GameState& state);
+        void render(GameState& state, float deltaTime);
         void renderMap(std::vector<std::vector<Tile>>& map);
         void renderTile(Tile& tile, float x, float z);
         std::unique_ptr<Mesh> initTile();
+        void initPlayersModels(GameState& state);
+        void uptPlayerModel(int playerID, std::shared_ptr<Model> &playerModel, GameState& state);
         glm::vec3 getTileCenter (const Tile& tile);
         glm::vec3 getTileRandPos(const Tile& tile);
 
-        std::vector<std::shared_ptr<Model>>         _playersModels;
+        std::map<int, std::shared_ptr<Model>> _playersModels;
 
     private:
         sf::VideoMode              _videoMode;

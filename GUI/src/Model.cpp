@@ -16,8 +16,8 @@ void Model::Draw(Shader &shader)
 {
     glm::mat4 model = glm::mat4(1.f);
     model = glm::translate(model, _position + _offset);
-    model = glm::rotate(model, glm::radians(_rotation.x), glm::vec3(1.f, 0.f, 0.f));
     model = glm::rotate(model, glm::radians(_rotation.y), glm::vec3(0.f, 1.f, 0.f));
+    model = glm::rotate(model, glm::radians(_rotation.x), glm::vec3(1.f, 0.f, 0.f));
     model = glm::rotate(model, glm::radians(_rotation.z), glm::vec3(0.f, 0.f, 1.f));
     model = glm::scale(model, _scale);
     shader.setMat4("model", model);
@@ -41,8 +41,10 @@ void Model::loadModel(const std::string &path)
         return;
     }
     _directory = path.substr(0, path.find_last_of('/'));
+    _globalInverseTransform = glm::inverse(aiMat4ToGlm(_scene->mRootNode->mTransformation));
 
     processNode(_scene->mRootNode, _scene);
+    processNodeAnimation(_scene->mRootNode, glm::mat4(1.f), nullptr);
 }
 
 void Model::processNode(aiNode *node, const aiScene *scene)
@@ -232,37 +234,28 @@ void Model::updateAnimation(float deltaTime, const std::optional<std::string>& a
     _animTime += deltaTime * tps;
     _animTime  = fmod(_animTime, anim->mDuration);
 
-    processNodeAnimation(_scene->mRootNode, glm::mat4(1.f));
+    processNodeAnimation(_scene->mRootNode, glm::mat4(1.f), anim);
 }
 
-void Model::moveTo(glm::vec3 newPosition)
+void Model::moveTo(glm::vec3 newPosition, glm::vec3 newRotation)
 {
-    glm::vec3 direction = newPosition - _position;
-
-    if (glm::length(direction) > 0.001f)
-    {
-        float angle = glm::degrees(atan2(direction.x, direction.z));
-        _rotation.y = angle;
-
-        // peut etre ajouter rota progressive pout res plus propre
-        // a voir quand on pourra test mais ca a pas l'air tres dur
-    }
-
     _position = newPosition;
+    _rotation = newRotation;
 }
 
-void Model::processNodeAnimation(aiNode* node, const glm::mat4& parentTransform)
+void Model::processNodeAnimation(aiNode* node, const glm::mat4& parentTransform, aiAnimation *anim)
 {
     std::string nodeName = node->mName.C_Str();
-    aiAnimation* anim = _scene->mAnimations[_currentAnim];
 
     glm::mat4 nodeTransform = aiMat4ToGlm(node->mTransformation);
 
     aiNodeAnim* channel = nullptr;
-    for (unsigned int i = 0; i < anim->mNumChannels; i++) {
-        if (strcmp(anim->mChannels[i]->mNodeName.C_Str(), nodeName.c_str()) == 0) {
-            channel = anim->mChannels[i];
-            break;
+    if (anim != nullptr) {
+        for (unsigned int i = 0; i < anim->mNumChannels; i++) {
+            if (strcmp(anim->mChannels[i]->mNodeName.C_Str(), nodeName.c_str()) == 0) {
+                channel = anim->mChannels[i];
+                break;
+            }
         }
     }
 
@@ -280,11 +273,11 @@ void Model::processNodeAnimation(aiNode* node, const glm::mat4& parentTransform)
 
     if (_boneMap.count(nodeName)) {
         int idx = _boneMap[nodeName];
-        _bones[idx].finalMatrix = globalTransform * _bones[idx].offsetMatrix;
+        _bones[idx].finalMatrix = _globalInverseTransform * globalTransform * _bones[idx].offsetMatrix;
     }
 
     for (unsigned int i = 0; i < node->mNumChildren; i++)
-        processNodeAnimation(node->mChildren[i], globalTransform);
+        processNodeAnimation(node->mChildren[i], globalTransform, anim);
 }
 
 std::string Model::toLower(const std::string& value)
