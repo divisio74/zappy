@@ -21,11 +21,8 @@ public:
     const std::vector<std::shared_ptr<Player>> &getPlayers() const;
     std::vector<std::shared_ptr<Ressource>> &getRessources();
     const std::vector<std::shared_ptr<Ressource>> &getRessources() const;
-    std::vector<std::shared_ptr<Egg>> &getEggs();
-    const std::vector<std::shared_ptr<Egg>> &getEggs() const;
 
 private:
     std::vector<std::shared_ptr<Player>> _players;
     std::vector<std::shared_ptr<Ressource>> _ressources;
-    std::vector<std::shared_ptr<Egg>> _eggs;
 };

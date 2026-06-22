@@ -17,7 +17,7 @@ struct WorldData {
     std::unordered_map<std::size_t, Player> players;
     std::vector<std::shared_ptr<Ressource>> ressources;
     std::unordered_map<ResourceType, int> ressourcesQt;
-    std::vector<std::shared_ptr<Egg>> eggs;
+    std::vector<Egg> eggs;
     std::unordered_map<std::size_t, Team> teams;
     Vector2 size;
 };

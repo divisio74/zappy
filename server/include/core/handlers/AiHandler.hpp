@@ -25,7 +25,8 @@ private:
 
     Player& findPlayer(size_t playerId) const;
     Vector2 normalizePos(Vector2) const;
-    const Tile& getTile(const Vector2& pos) const;
+    bool canIncantation(const Player& player) const;
+    int countPlayersAtLevel(const Vector2 &coord, int level) const;
 
     void addMessage(size_t id, std::string message);
 
