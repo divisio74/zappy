@@ -18,3 +18,18 @@ PHASE 2 — regroupée (rassemblements), broadcast ACTIF
   • rally sur la BALISE = joueur id le plus petit (homing sur direction K)
   • 4→5, 5→6 (≥4) puis 6→7, 7→8 (6) → rassemblement à 6, 1 recette, ALL RISE
   • jusqu'au niveau 8
+
+
+  Attention seule mort possible = mort dee faim
+
+q and r :
+
+inventiare illimité
+
+idée de batard pour niquer les autres equipes faire un injection dans les autres models depuis le broadcast 
+
+
+
+
+actuellement manque un and pour les rally mais fait partie des ajutsmeent 
+d'optimisation risqué ou notre joeuurs peut lancer un rituel car il croit que son duo est sur la memec ase alors que c'tes un autre joueurs bref a voir
