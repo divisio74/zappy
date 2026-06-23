@@ -41,6 +41,10 @@ void AiHandler::parseCommand(size_t playerId, std::vector<std::string> &commands
             command.rfind("Take ", 0) == 0 ||
             command.rfind("Set ", 0) == 0)
         {
+            if (command == "Incantation" && !canIncantation(player)) {
+                addMessage(player.getId(), "ko");
+                return;
+            }
             enqueueCommand(player, command);
         } else {
             addMessage(playerId, "ko");
