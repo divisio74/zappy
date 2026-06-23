@@ -60,11 +60,13 @@ def handle_broadcast(line, state):
         msg_type = parts[3]
         payload = parts[4] if len(parts) > 4 else ""
 
+        prev = state["team"].get(sender_id, {})
         state["team"][sender_id] = {
             "k": k,
             "level": level,
             "type": msg_type,
             "payload": payload,
+            "seq": prev.get("seq", 0) + 1,
         }
 
     except (ValueError, IndexError):
