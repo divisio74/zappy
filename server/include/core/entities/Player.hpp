@@ -9,6 +9,7 @@
 #include <chrono>
 #include <queue>
 #include <unordered_map>
+#include "core/entities/Ressource.hpp"
 
 struct EvolutionCost {
     int nbPlayers;
@@ -60,6 +61,8 @@ public:
     void addPlayerAction(playerAction action);
     std::size_t getId() const;
     std::size_t getTeamId() const;
+
+    void addRessource(ResourceType type);
 
 private:
     std::queue<playerAction> _actionQueue;

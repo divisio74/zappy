@@ -1,8 +1,67 @@
 #include "core/handlers/AiHandler.hpp"
 
+#include <algorithm>
 #include <string>
 #include <sstream>
-#include "AiHandler.hpp"
+
+namespace {
+bool getResourceType(const std::string &name, ResourceType &type)
+{
+    if (name == "food")
+        type = ResourceType::Food;
+    else if (name == "linemate")
+        type = ResourceType::Linemate;
+    else if (name == "deraumere")
+        type = ResourceType::Deraumere;
+    else if (name == "sibur")
+        type = ResourceType::Sibur;
+    else if (name == "mendiane")
+        type = ResourceType::Mendiane;
+    else if (name == "phiras")
+        type = ResourceType::Phiras;
+    else if (name == "thystame")
+        type = ResourceType::Thystame;
+    else
+        return false;
+    return true;
+}
+
+bool removeResourceFromWorld(
+    std::vector<std::shared_ptr<Ressource>> &tileResources,
+    std::vector<std::shared_ptr<Ressource>> &worldResources,
+    ResourceType type)
+{
+    auto resource = std::find_if(tileResources.begin(), tileResources.end(),
+        [type](const std::shared_ptr<Ressource> &resource) {
+            return resource->getType() == type;
+        });
+
+    if (resource == tileResources.end())
+        return false;
+
+    const std::size_t resourceId = (*resource)->getId();
+    tileResources.erase(resource);
+    worldResources.erase(std::remove_if(worldResources.begin(), worldResources.end(),
+        [resourceId](const std::shared_ptr<Ressource> &resource) {
+            return resource->getId() == resourceId;
+        }), worldResources.end());
+    return true;
+}
+
+bool consumeResources(
+    std::vector<std::shared_ptr<Ressource>> &tileResources,
+    std::vector<std::shared_ptr<Ressource>> &worldResources,
+    ResourceType type,
+    int quantity)
+{
+    for (int i = 0; i < quantity; i++) {
+        if (!removeResourceFromWorld(tileResources, worldResources, type))
+            return false;
+    }
+    return true;
+}
+
+}
 
 const std::unordered_map<std::string, int> AiHandler::ACTION_COSTS = {
     {"Forward",     7},
@@ -45,6 +104,8 @@ void AiHandler::parseCommand(size_t playerId, std::vector<std::string> &commands
                 addMessage(player.getId(), "ko");
                 return;
             }
+            if (command == "Incantation")
+                addMessage(player.getId(), "Elevation underway");
             enqueueCommand(player, command);
         } else {
             addMessage(playerId, "ko");
@@ -318,15 +379,120 @@ void AiHandler::execFork(Player &player)
 
 void AiHandler::execEject(Player &ejector)
 {
-    return;
+    Vector2 targetPos = ejector.getCoordinate();
+
+    switch (ejector.getDirection()) {
+        case Direction::North:
+            targetPos.y -= 1;
+            break;
+        case Direction::East:
+            targetPos.x += 1;
+            break;
+        case Direction::South:
+            targetPos.y += 1;
+            break;
+        case Direction::West:
+            targetPos.x -= 1;
+            break;
+    }
+    targetPos = normalizePos(targetPos);
+
+    bool ejected = false;
+    const Vector2 ejectorPos = ejector.getCoordinate();
+    const int pushDirection = static_cast<int>(ejector.getDirection());
+    const int sourceDirection = (pushDirection + 2) % 4;
+
+    for (auto &[id, player] : _world.players) {
+        if (id == ejector.getId())
+            continue;
+        if (player.getCoordinate().x != ejectorPos.x
+            || player.getCoordinate().y != ejectorPos.y)
+            continue;
+        const int playerDirection = static_cast<int>(player.getDirection());
+        const int relativeDirection = (playerDirection - sourceDirection + 4) % 4;
+        const std::string ejectMessage = "eject: "
+            + std::to_string(relativeDirection * 2 + 1);
+
+        player.setCoordinate(targetPos);
+        addMessage(player.getId(), ejectMessage);
+        ejected = true;
+    }
+
+    auto &eggs = _world.eggs;
+    auto removed = std::remove_if(eggs.begin(), eggs.end(),
+        [&ejectorPos](const Egg &egg) {
+            return egg.getCoordinate().x == ejectorPos.x
+                && egg.getCoordinate().y == ejectorPos.y;
+        });
+    if (removed != eggs.end()) {
+        eggs.erase(removed, eggs.end());
+        ejected = true;
+    }
+
+    addMessage(ejector.getId(), ejected ? "ok" : "ko");
 }
 
 void AiHandler::execIncantation(Player &player)
 {
-    return;
+    if (!canIncantation(player)) {
+        addMessage(player.getId(), "ko");
+        return;
+    }
+
+    const int currentLevel = player.getLevel();
+    const EvolutionCost &cost = evolutionCosts.at(currentLevel);
+    const Vector2 coord = player.getCoordinate();
+    auto &tileResources = _world.map[coord.y][coord.x].getRessources();
+
+    consumeResources(tileResources, _world.ressources, ResourceType::Linemate, cost.linemate);
+    consumeResources(tileResources, _world.ressources, ResourceType::Deraumere, cost.deraumere);
+    consumeResources(tileResources, _world.ressources, ResourceType::Sibur, cost.sibur);
+    consumeResources(tileResources, _world.ressources, ResourceType::Mendiane, cost.mendiane);
+    consumeResources(tileResources, _world.ressources, ResourceType::Phiras, cost.phiras);
+    consumeResources(tileResources, _world.ressources, ResourceType::Thystame, cost.thystame);
+
+    const int newLevel = currentLevel + 1;
+    for (auto &[id, target] : _world.players) {
+        if (target.getCoordinate().x != coord.x
+            || target.getCoordinate().y != coord.y
+            || target.getLevel() != currentLevel)
+            continue;
+        target.setLevel(newLevel);
+        addMessage(target.getId(), "Current level: " + std::to_string(newLevel));
+    }
 }
 
 void AiHandler::execTake(Player &player, const std::string &object)
 {
-    return;
+    ResourceType type;
+
+    if (!getResourceType(object, type)) {
+        addMessage(player.getId(), "ko");
+        return;
+    }
+
+    const Vector2 &pos = player.getCoordinate();
+    auto &tileResources = _world.map[pos.y][pos.x].getRessources();
+    auto tileResource = std::find_if(tileResources.begin(), tileResources.end(),
+        [type](const std::shared_ptr<Ressource> &resource) {
+            return resource->getType() == type;
+        });
+
+    if (tileResource == tileResources.end()) {
+        addMessage(player.getId(), "ko");
+        return;
+    }
+
+    const std::size_t resourceId = (*tileResource)->getId();
+
+    player.addRessource(type);
+    tileResources.erase(tileResource);
+
+    auto &resources = _world.ressources;
+    resources.erase(std::remove_if(resources.begin(), resources.end(),
+        [resourceId](const std::shared_ptr<Ressource> &resource) {
+            return resource->getId() == resourceId;
+        }), resources.end());
+
+    addMessage(player.getId(), "ok");
 }

@@ -98,3 +98,30 @@ std::size_t Player::getTeamId() const
 {
     return _teamId;
 }
+
+void Player::addRessource(ResourceType type)
+{
+    switch (type) {
+        case ResourceType::Food:
+            _inventory.food++;
+            break;
+        case ResourceType::Linemate:
+            _inventory.linemate++;
+            break;
+        case ResourceType::Deraumere:
+            _inventory.deraumere++;
+            break;
+        case ResourceType::Sibur:
+            _inventory.sibur++;
+            break;
+        case ResourceType::Mendiane:
+            _inventory.mendiane++;
+            break;
+        case ResourceType::Phiras:
+            _inventory.phiras++;
+            break;
+        case ResourceType::Thystame:
+            _inventory.thystame++;
+            break;
+    }
+}
