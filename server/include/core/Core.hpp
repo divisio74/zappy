@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <cstddef>
 #include <optional>
 #include <string>
@@ -14,7 +15,6 @@
 
 class Core {
 public:
-    Core();
     explicit Core(const ServerConfig &config);
 
     void runServer();
@@ -37,8 +37,11 @@ private:
     void processGuiClientCommand(std::size_t socketId,
         const std::string &command);
     void cleanupDisconnectedClient(std::size_t socketId);
+    void processTimedWorldEvents();
+    void updateTickDuration();
     std::optional<std::size_t> findTeamByName(const std::string &teamName) const;
     std::optional<std::size_t> spawnPlayerFromTeamEgg(std::size_t teamId);
+    int getPollTimeoutMs() const;
 
     WorldData _worldData;
     WorldHandling _worldHandling;
@@ -46,5 +49,8 @@ private:
     GuiHandler _guiHandler;
     AiHandler _aiHandler;
     std::vector<std::string> _teamNames;
+    std::chrono::milliseconds _tickDuration;
+    std::chrono::steady_clock::time_point _lastTickTime;
+    int _resourceSpawnTicks;
     std::size_t _nextPlayerId;
 };

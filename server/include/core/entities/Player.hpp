@@ -47,5 +47,5 @@ private:
     bool _alive = true;
     std::size_t _id = 0;
     std::size_t _teamId = 0;
-    int _level;
+    int _level = 1;
 };

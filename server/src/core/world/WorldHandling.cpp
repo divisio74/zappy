@@ -67,7 +67,6 @@ void WorldHandling::initRessourcesQt()
 
 void WorldHandling::spawnRessources()
 {
-    _data.ressources.clear();
     for (const auto &[type, density] : RESSOURCES_QT) {
         static_cast<void>(density);
         int quantity = _data.ressourcesQt[type];

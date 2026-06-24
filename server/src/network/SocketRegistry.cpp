@@ -29,7 +29,7 @@ void SocketRegistry::removeSocket(std::size_t socketId)
     refreshIndexes();
 }
 
-std::vector<std::size_t> SocketRegistry::pollSockets()
+std::vector<std::size_t> SocketRegistry::pollSockets(int timeoutMs)
 {
     std::vector<pollfd> pollFds;
     std::vector<std::size_t> readyIds;
@@ -38,7 +38,7 @@ std::vector<std::size_t> SocketRegistry::pollSockets()
     pollFds.push_back({_listener.getFd(), POLLIN, 0});
     for (const auto &entry : _sockets)
         pollFds.push_back({entry.socket.getFd(), POLLIN, 0});
-    if (::poll(pollFds.data(), pollFds.size(), 0) == -1)
+    if (::poll(pollFds.data(), pollFds.size(), timeoutMs) == -1)
         throw std::runtime_error("poll failed");
 
     if (pollFds[0].revents & (POLLHUP | POLLERR | POLLNVAL))

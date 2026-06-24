@@ -26,7 +26,7 @@ public:
         std::size_t maxClients);
 
     void removeSocket(std::size_t socketId);
-    std::vector<std::size_t> pollSockets();
+    std::vector<std::size_t> pollSockets(int timeoutMs);
     std::vector<std::size_t> getNewConnections();
 
     void assignBusinessId(std::size_t socketId, std::size_t businessId);

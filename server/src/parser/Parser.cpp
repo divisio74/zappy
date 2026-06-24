@@ -6,6 +6,7 @@
 namespace {
 const char *USAGE = "USAGE: ./zappy_server -p port -x width -y height -n name1 ... -c clientsNb -f freq";
 const int REQUIRED_ARG_COUNT = 6;
+const int MAX_FREQ = 1000;
 
 bool isArgExist(int index, int argc)
 {
@@ -58,7 +59,11 @@ void parseArgument(const std::string &arg, int argc, char **argv, int &index,
         config.clientsNb = static_cast<std::size_t>(parseNumber(argv[++index], "-c"));
         argCount++;
     } else if (arg == "-f" && isArgExist(index, argc)) {
-        config.freq = static_cast<std::size_t>(parseNumber(argv[++index], "-f"));
+        int freq = parseNumber(argv[++index], "-f");
+
+        if (freq == 0 || freq > MAX_FREQ)
+            throw std::invalid_argument("Invalid value for -f");
+        config.freq = static_cast<std::size_t>(freq);
         argCount++;
     } else {
         throw std::invalid_argument(USAGE);
