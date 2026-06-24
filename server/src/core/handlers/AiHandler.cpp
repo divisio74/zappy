@@ -1,6 +1,7 @@
 #include "core/handlers/AiHandler.hpp"
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <sstream>
 
@@ -59,6 +60,93 @@ bool consumeResources(
             return false;
     }
     return true;
+}
+
+bool removeResourceFromInventory(Inventory &inventory, ResourceType type)
+{
+    int *quantity = nullptr;
+
+    switch (type) {
+        case ResourceType::Food:
+            quantity = &inventory.food;
+            break;
+        case ResourceType::Linemate:
+            quantity = &inventory.linemate;
+            break;
+        case ResourceType::Deraumere:
+            quantity = &inventory.deraumere;
+            break;
+        case ResourceType::Sibur:
+            quantity = &inventory.sibur;
+            break;
+        case ResourceType::Mendiane:
+            quantity = &inventory.mendiane;
+            break;
+        case ResourceType::Phiras:
+            quantity = &inventory.phiras;
+            break;
+        case ResourceType::Thystame:
+            quantity = &inventory.thystame;
+            break;
+    }
+    if (quantity == nullptr || *quantity <= 0)
+        return false;
+    (*quantity)--;
+    return true;
+}
+
+std::size_t getNextResourceId(const std::vector<std::shared_ptr<Ressource>> &resources)
+{
+    std::size_t nextId = 0;
+
+    for (const auto &resource : resources)
+        nextId = std::max(nextId, resource->getId() + 1);
+    return nextId;
+}
+
+int getWrappedDelta(int from, int to, int size)
+{
+    int delta = to - from;
+
+    if (size <= 0)
+        return delta;
+    if (delta > size / 2)
+        delta -= size;
+    else if (delta < -size / 2)
+        delta += size;
+    return delta;
+}
+
+int getAbsoluteSector(int dx, int dy)
+{
+    if (dx == 0 && dy < 0)
+        return 0;
+    if (dx < 0 && dy < 0)
+        return 1;
+    if (dx < 0 && dy == 0)
+        return 2;
+    if (dx < 0 && dy > 0)
+        return 3;
+    if (dx == 0 && dy > 0)
+        return 4;
+    if (dx > 0 && dy > 0)
+        return 5;
+    if (dx > 0 && dy == 0)
+        return 6;
+    return 7;
+}
+
+int getBroadcastDirection(const Player &receiver, const Player &sender, const Vector2 &worldSize)
+{
+    const int dx = getWrappedDelta(receiver.getCoordinate().x, sender.getCoordinate().x, worldSize.x);
+    const int dy = getWrappedDelta(receiver.getCoordinate().y, sender.getCoordinate().y, worldSize.y);
+
+    if (dx == 0 && dy == 0)
+        return 0;
+
+    const int absoluteSector = getAbsoluteSector(dx, dy);
+    const int receiverFrontSector = (8 - static_cast<int>(receiver.getDirection()) * 2) % 8;
+    return ((absoluteSector - receiverFrontSector + 8) % 8) + 1;
 }
 
 }
@@ -172,7 +260,7 @@ bool AiHandler::canIncantation(const Player &player) const
     if (it == evolutionCosts.end())
         return false;
 
-    const EvolutionCost &cost = it->second;
+    auto &cost = it->second;
     auto &coord = player.getCoordinate();
     auto &tileResources = _world.map[coord.y][coord.x].getRessources();
 
@@ -440,7 +528,7 @@ void AiHandler::execIncantation(Player &player)
     }
 
     const int currentLevel = player.getLevel();
-    const EvolutionCost &cost = evolutionCosts.at(currentLevel);
+    auto &cost = evolutionCosts.at(currentLevel);
     const Vector2 coord = player.getCoordinate();
     auto &tileResources = _world.map[coord.y][coord.x].getRessources();
 
@@ -494,5 +582,36 @@ void AiHandler::execTake(Player &player, const std::string &object)
             return resource->getId() == resourceId;
         }), resources.end());
 
+    addMessage(player.getId(), "ok");
+}
+
+void AiHandler::execBroadcast(Player &player, const std::string &text)
+{
+    for (auto &[id, receiver] : _world.players) {
+        if (id == player.getId())
+            continue;
+
+        const int direction = getBroadcastDirection(receiver, player, _world.size);
+        addMessage(receiver.getId(),
+            "message " + std::to_string(direction) + ", " + text);
+    }
+    addMessage(player.getId(), "ok");
+}
+
+void AiHandler::execSet(Player &player, const std::string &object)
+{
+    ResourceType type;
+
+    if (!getResourceType(object, type)
+        || !removeResourceFromInventory(player.getInventory(), type)) {
+        addMessage(player.getId(), "ko");
+        return;
+    }
+
+    const Vector2 pos = player.getCoordinate();
+    auto resource = std::make_shared<Ressource>(pos, type, getNextResourceId(_world.ressources));
+
+    _world.ressources.push_back(resource);
+    _world.map[pos.y][pos.x].getRessources().push_back(resource);
     addMessage(player.getId(), "ok");
 }

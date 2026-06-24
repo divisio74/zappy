@@ -9,18 +9,14 @@ all:
 	cmake -S . -B build
 	cmake --build build -j
 
-run: all
-	./${NAME}
-
-val: ${NAME}
-	valgrind ./${NAME}
-
 clean:
 	rm -rf build
 
-re:
-	rm -rf build
-	cmake -S . -B build
-	cmake --build build -j
+fclean: clean
+	rm -f zappy_server
+	rm -f zappy_gui
+	rm -f zappy_ai
+
+re: fclean all
 
 .PHONY: all clean fclean re tests_run
