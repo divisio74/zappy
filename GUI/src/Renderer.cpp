@@ -25,6 +25,31 @@ static float getAnimationDuration(const std::string &animation)
     return 0.f;
 }
 
+static std::string getTeamModel(const Player& player, const GameState& state)
+{
+    const auto& teams = state.getTeams();
+
+    if (teams.size() > 4)
+        return "model/Astronaut.glb";
+
+    auto it = std::find(teams.begin(), teams.end(), player._teamName);
+
+    if (it == teams.end())
+        return "model/Astronaut.glb";
+
+    int teamNum = static_cast<int>(std::distance(teams.begin(), it));
+
+    switch (teamNum)
+    {
+        case 0: return "model/FrogMech.glb";
+        case 1: return "model/BeeMech.glb";
+        case 2: return "model/FlamMech.glb";
+        case 3: return "model/FoxMech.glb";
+        default:
+            return "model/Astronaut.glb";
+    }
+}
+
 Renderer::Renderer()
 {
     _videoMode.size.x  = 1920;
@@ -70,7 +95,7 @@ void Renderer::render(GameState& state, float deltaTime)
             Player *player = state.findPlayer(playerId);
 
             if (player != nullptr) {
-                _playersModels.insert({playerId, std::make_shared<Model>( "model/FrogMech.glb", getTileRandPos(state.getTile(player->_x, player->_y)), glm::vec3(0.15f), getPlayerRotation(player->_orientation), glm::vec3(0.f))});
+                _playersModels.insert({playerId, std::make_shared<Model>( getTeamModel(*player, state), getTileRandPos(state.getTile(player->_x, player->_y)), glm::vec3(0.15f), getPlayerRotation(player->_orientation), glm::vec3(0.f))});
             }
         }
     }
@@ -169,14 +194,13 @@ std::unique_ptr<Mesh> Renderer::initTile()
 
 void Renderer::initPlayersModels(GameState& state)
 {
+    std::vector<std::string> teams = state.getTeams();
+
     for (auto& [id, player] : state.getPlayers()) {
-        _playersModels.insert({id, std::make_shared<Model>(
-            "model/FrogMech.glb",
-            getTileRandPos(state.getTile(player._x, player._y)),
-            glm::vec3(0.15f),
-            getPlayerRotation(player._orientation),
-            glm::vec3(0.f)
-        )});
+        _playersModels.insert({
+            id,
+            std::make_shared<Model>(getTeamModel(player, state), getTileRandPos(state.getTile(player._x, player._y)), glm::vec3(0.15f), getPlayerRotation(player._orientation), glm::vec3(0.f))
+        });
     }
 }
 
