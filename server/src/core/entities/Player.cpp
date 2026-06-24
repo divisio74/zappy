@@ -1,4 +1,5 @@
 #include "core/entities/Player.hpp"
+#include "Player.hpp"
 
 Player::Player(Vector2 coordinate, Direction direction, std::size_t id, std::size_t teamId)
     : _coordinate(coordinate),
@@ -68,7 +69,17 @@ void Player::setLevel(int newLevel)
     _level = newLevel;
 }
 
-std::queue<playerAction>& Player::getPlayerAction()
+bool Player::isFrozen() const
+{
+    return _isFrozen;
+}
+
+void Player::setFrozen(bool frozen)
+{
+    _isFrozen = frozen;
+}
+
+std::queue<playerAction> &Player::getPlayerAction()
 {
     return _actionQueue;
 }

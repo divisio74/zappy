@@ -8,6 +8,27 @@
 #include <string>
 #include <chrono>
 #include <queue>
+#include <unordered_map>
+
+struct EvolutionCost {
+    int nbPlayers;
+    int linemate;
+    int deraumere;
+    int sibur;
+    int mendiane;
+    int phiras;
+    int thystame;
+};
+
+std::unordered_map<int, EvolutionCost> evolutionCosts = {
+    {1, {1, 1, 0, 0, 0, 0, 0}},  // 1->2
+    {2, {2, 1, 1, 1, 0, 0, 0}},  // 2->3
+    {3, {2, 2, 0, 1, 0, 2, 0}},  // 3->4
+    {4, {4, 1, 1, 2, 0, 1, 0}},  // 4->5
+    {5, {4, 1, 2, 1, 3, 0, 0}},  // 5->6
+    {6, {6, 1, 2, 3, 0, 1, 0}},  // 6->7
+    {7, {6, 2, 2, 2, 2, 2, 1}},  // 7->8
+};
 
 struct playerAction
 {
@@ -33,6 +54,8 @@ public:
     void setAlive(bool alive);
     int getLevel() const;
     void setLevel(int);
+    bool isFrozen() const;
+    void setFrozen(bool frozen);
     std::queue<playerAction>& getPlayerAction();
     void addPlayerAction(playerAction action);
     std::size_t getId() const;
@@ -47,5 +70,6 @@ private:
     bool _alive = true;
     std::size_t _id = 0;
     std::size_t _teamId = 0;
+    bool _isFrozen = false;
     int _level = 1;
 };

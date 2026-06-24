@@ -2,6 +2,7 @@
 
 #include <string>
 #include <sstream>
+#include "AiHandler.hpp"
 
 const std::unordered_map<std::string, int> AiHandler::ACTION_COSTS = {
     {"Forward",     7},
@@ -40,6 +41,10 @@ void AiHandler::parseCommand(size_t playerId, std::vector<std::string> &commands
             command.rfind("Take ", 0) == 0 ||
             command.rfind("Set ", 0) == 0)
         {
+            if (command == "Incantation" && !canIncantation(player)) {
+                addMessage(player.getId(), "ko");
+                return;
+            }
             enqueueCommand(player, command);
         } else {
             addMessage(playerId, "ko");
@@ -97,6 +102,56 @@ Vector2 AiHandler::normalizePos(Vector2 pos) const
         pos.y += _world.size.y;
     pos.y = pos.y % _world.size.y;
     return pos;
+}
+
+bool AiHandler::canIncantation(const Player &player) const
+{
+    int level = player.getLevel();
+    auto it = evolutionCosts.find(level);
+    if (it == evolutionCosts.end())
+        return false;
+
+    const EvolutionCost &cost = it->second;
+    auto &coord = player.getCoordinate();
+    auto &tileResources = _world.map[coord.y][coord.x].getRessources();
+
+    int linemate = 0, deraumere = 0, sibur = 0, mendiane = 0, phiras = 0, thystame = 0;
+    for (const auto &r : tileResources) {
+        switch (r->getType()) {
+            case ResourceType::Linemate: linemate++; break;
+            case ResourceType::Deraumere: deraumere++; break;
+            case ResourceType::Sibur: sibur++; break;
+            case ResourceType::Mendiane: mendiane++; break;
+            case ResourceType::Phiras: phiras++; break;
+            case ResourceType::Thystame: thystame++; break;
+            default: break;
+        }
+    }
+
+    if (linemate < cost.linemate) return false;
+    if (deraumere < cost.deraumere) return false;
+    if (sibur < cost.sibur) return false;
+    if (mendiane < cost.mendiane) return false;
+    if (phiras < cost.phiras) return false;
+    if (thystame < cost.thystame) return false;
+
+    int sameLevelCount = countPlayersAtLevel(coord, level);
+    if (sameLevelCount < cost.nbPlayers)
+        return false;
+
+    return true;
+}
+
+int AiHandler::countPlayersAtLevel(const Vector2 &coord, int level) const
+{
+    int count = 0;
+    for (const auto &[id, player] : _world.players) {
+        if (player.getCoordinate().x == coord.x &&
+            player.getCoordinate().y == coord.y &&
+            player.getLevel() == level)
+            count++;
+    }
+    return count;
 }
 
 void AiHandler::enqueueCommand(Player &player, const std::string &command)
@@ -212,7 +267,7 @@ void AiHandler::execLook(Player &player)
 
             pos = normalizePos(pos);
 
-            const Tile &tile = _world.map[pos.x][pos.y];
+            const Tile &tile = _world.map[pos.y][pos.x];
 
             if (!first)
                 response << ",";
@@ -249,38 +304,29 @@ void AiHandler::execInventory(Player &player)
 
 void AiHandler::execConnectNbr(Player &player)
 {
-    addMessage(player.getId(), std::to_string(_world.eggs.size()));
+    Team& team = _world.teams[player.getTeamId()];
+    addMessage(player.getId(), std::to_string(team.getMaxSlot() - team.getUsedSlot()));
 }
 
 void AiHandler::execFork(Player &player)
 {
-    addMessage(player.getId(), "ko");
+    Team& team = _world.teams[player.getTeamId()];
+    team.setMaxSlot(team.getMaxSlot() + 1);
+    _world.eggs.push_back(Egg(player.getCoordinate(), player.getTeamId()));
+    addMessage(player.getId(), "ok");
 }
 
-void AiHandler::execEject(Player &player)
+void AiHandler::execEject(Player &ejector)
 {
-    addMessage(player.getId(), "ko");
+    return;
 }
 
 void AiHandler::execIncantation(Player &player)
 {
-    addMessage(player.getId(), "ko");
-}
-
-void AiHandler::execBroadcast(Player &player, const std::string &text)
-{
-    static_cast<void>(text);
-    addMessage(player.getId(), "ko");
+    return;
 }
 
 void AiHandler::execTake(Player &player, const std::string &object)
 {
-    static_cast<void>(object);
-    addMessage(player.getId(), "ko");
-}
-
-void AiHandler::execSet(Player &player, const std::string &object)
-{
-    static_cast<void>(object);
-    addMessage(player.getId(), "ko");
+    return;
 }

@@ -19,13 +19,3 @@ const std::vector<std::shared_ptr<Ressource>> &Tile::getRessources() const
 {
     return _ressources;
 }
-
-std::vector<std::shared_ptr<Egg>> &Tile::getEggs()
-{
-    return _eggs;
-}
-
-const std::vector<std::shared_ptr<Egg>> &Tile::getEggs() const
-{
-    return _eggs;
-}
