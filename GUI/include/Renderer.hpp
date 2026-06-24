@@ -41,8 +41,9 @@ class Renderer {
         void uptPlayerModel(int playerID, std::shared_ptr<Model> &playerModel, GameState& state);
         glm::vec3 getTileCenter (const Tile& tile);
         glm::vec3 getTileRandPos(const Tile& tile);
+        std::shared_ptr<Model> getModel(const std::string path, glm::vec3 scale = glm::vec3(1.f));
 
-        std::map<int, std::shared_ptr<Model>> _playersModels;
+        std::map<int, std::shared_ptr<Model>> _playersModels; //TODO mettre en private et adapté partout dans le code
 
     private:
         sf::VideoMode              _videoMode;
@@ -51,4 +52,7 @@ class Renderer {
         Camera                     _camera;
         std::unique_ptr<Shader>    _shader;
         std::unique_ptr<Mesh>      _tileMesh;
+        std::map<int, std::string> _playerAnimations;
+        std::map<int, float>       _playerAnimationTimers;
+        std::map<std::string, std::shared_ptr<Model>> _modelsCache;
 };

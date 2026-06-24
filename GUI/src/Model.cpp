@@ -31,6 +31,19 @@ void Model::Draw(Shader &shader)
         mesh.Draw(shader);
 }
 
+void Model::Draw(Shader &shader, glm::vec3 position)
+{
+    glm::mat4 model = glm::translate(glm::mat4(1.f), position + _offset);
+    model = glm::rotate(model, glm::radians(_rotation.x), glm::vec3(1.f, 0.f, 0.f));
+    model = glm::rotate(model, glm::radians(_rotation.y), glm::vec3(0.f, 1.f, 0.f));
+    model = glm::rotate(model, glm::radians(_rotation.z), glm::vec3(0.f, 0.f, 1.f));
+    model = glm::scale(model, _scale);
+    shader.setMat4("model", model);
+
+    for (auto& mesh : _meshes)
+        mesh.Draw(shader);
+}
+
 void Model::loadModel(const std::string &path)
 {
     _scene = _importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);

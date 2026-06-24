@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Model.hpp"
-#include <memory>
 #include <vector>
+#include <memory>
+#include "Resource.hpp"
 
 struct Tile {
     int food;
@@ -16,7 +16,7 @@ struct Tile {
     float x;
     float z;
 
-    std::vector<std::shared_ptr<Model>> models;
+    std::vector<Resource> _resources;
 
     Tile();
 };

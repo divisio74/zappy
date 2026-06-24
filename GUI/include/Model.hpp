@@ -32,6 +32,7 @@ class Model
         );
 
         void Draw(Shader &shader);
+        void Draw(Shader &shader, glm::vec3 position);
         void updateAnimation(float deltaTime, const std::optional<std::string>& animName = std::nullopt);
         void moveTo(glm::vec3 position, glm::vec3 rotation);
 

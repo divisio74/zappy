@@ -18,6 +18,7 @@ struct Player {
     int _mendiane;
     int _phiras;
     int _thystame;
+    std::string _animation;
 
     Player();
 };

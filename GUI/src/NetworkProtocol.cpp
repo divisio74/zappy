@@ -88,7 +88,7 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
             Tile &t = state.getTile(x, y);
             words >> t.food >> t.linemate >> t.deraumere
                   >> t.sibur >> t.mendiane >> t.phiras >> t.thystame;
-            t.models.clear();
+            t._resources.clear();
         }
     }
 
@@ -117,6 +117,7 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
         newPlayer._level = level;
         newPlayer._teamName = teamName;
         newPlayer._isAlive = true;
+        newPlayer._animation = "idle";
         state.addPlayer(newPlayer);
         state._playerToUpt.push_back(newPlayer._id);
     }
@@ -131,9 +132,11 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
 
         Player *player = state.findPlayer(id);
         if (player != nullptr) {
+            bool hasMoved = player->_x != x || player->_y != y;
             player->_x = x;
             player->_y = y;
             player->_orientation = orientation;
+            player->_animation = hasMoved ? "walk" : "idle";
             state._playerToUpt.push_back(player->_id);
         }
     }
@@ -232,7 +235,7 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
             removeResourcePlayer(*player, resourceIndex);
             Tile &t = state.getTile(player->_x, player->_y);
             addResourceTile(t, resourceIndex);
-            t.models.clear();
+            t._resources.clear();
         }
     }
 
@@ -247,7 +250,9 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
             addResourcePlayer(*player, resourceIndex);
             Tile &t = state.getTile(player->_x, player->_y);
             removeResourceTile(t, resourceIndex);
-            t.models.clear();
+            t._resources.clear();
+            player->_animation = "pickup";
+            state._playerToUpt.push_back(player->_id);
         }
     }
 

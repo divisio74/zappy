@@ -16,6 +16,15 @@ static glm::vec3 getPlayerRotation(int orientation)
     }
 }
 
+static float getAnimationDuration(const std::string &animation)
+{
+    if (animation == "pickup")
+        return 0.8f;
+    if (animation == "walk")
+        return 0.35f;
+    return 0.f;
+}
+
 Renderer::Renderer()
 {
     _videoMode.size.x  = 1920;
@@ -53,31 +62,31 @@ void Renderer::render(GameState& state, float deltaTime)
     _shader->setMat4("projection", projection);
 
     for (int playerId : state._playerToUpt) {
-        auto modelIt = _playersModels.find(playerId);
+        auto it = _playersModels.find(playerId);
 
-        if (modelIt != _playersModels.end()) {
-            uptPlayerModel(modelIt->first, modelIt->second, state);
+        if (it != _playersModels.end()) {
+            uptPlayerModel(it->first, it->second, state);
         } else {
             Player *player = state.findPlayer(playerId);
 
             if (player != nullptr) {
-                _playersModels.insert({
-                    playerId,
-                    std::make_shared<Model>(
-                        "model/FrogMech.glb",
-                        getTileRandPos(state.getTile(player->_x, player->_y)),
-                        glm::vec3(0.15f),
-                        getPlayerRotation(player->_orientation),
-                        glm::vec3(0.f)
-                    )
-                });
+                _playersModels.insert({playerId, std::make_shared<Model>( "model/FrogMech.glb", getTileRandPos(state.getTile(player->_x, player->_y)), glm::vec3(0.15f), getPlayerRotation(player->_orientation), glm::vec3(0.f))});
             }
         }
     }
 
-    for (auto& player : _playersModels) {
-        player.second->updateAnimation(deltaTime, "walk");
-        player.second->Draw(*_shader);
+    for (auto& [playerId, playerModel] : _playersModels) {
+        std::string animation = "idle";
+
+        if (_playerAnimationTimers[playerId] > 0.f) {
+            animation = _playerAnimations[playerId];
+            _playerAnimationTimers[playerId] -= deltaTime;
+        } else {
+            _playerAnimations[playerId] = "idle";
+            _playerAnimationTimers[playerId] = 0.f;
+        }
+        playerModel->updateAnimation(deltaTime, animation);
+        playerModel->Draw(*_shader);
     }
 
     state._playerToUpt.clear();
@@ -102,25 +111,28 @@ void Renderer::renderTile(Tile& tile, float x, float z)
     _shader->setMat4("model", model);
     _tileMesh->Draw(*_shader);
 
-    if (tile.models.empty()) {
+    if (tile._resources.empty()) {
         for (int i = 0; i < tile.linemate; i++)
-            tile.models.push_back(std::make_shared<Model>("model/min_1.glb", getTileRandPos(tile), glm::vec3(0.15f), glm::vec3(0.f), glm::vec3(0.f)));
+            tile._resources.push_back(Resource(getModel("model/Linemate.glb", glm::vec3(0.15f)), getTileRandPos(tile)));
         for (int i = 0; i < tile.deraumere; i++)
-            tile.models.push_back(std::make_shared<Model>("model/min_2.glb", getTileRandPos(tile), glm::vec3(0.15f), glm::vec3(0.f), glm::vec3(0.f)));
-        for (int i = 0; i < tile.sibur; i++)
-            tile.models.push_back(std::make_shared<Model>("model/min_3.glb", getTileRandPos(tile), glm::vec3(0.15f), glm::vec3(0.f), glm::vec3(0.f)));
+            tile._resources.push_back(Resource(getModel("model/Deraumere.glb", glm::vec3(0.15f)), getTileRandPos(tile)));
         for (int i = 0; i < tile.mendiane; i++)
-            tile.models.push_back(std::make_shared<Model>("model/min_4.glb", getTileRandPos(tile), glm::vec3(0.15f), glm::vec3(0.f), glm::vec3(0.f)));
+            tile._resources.push_back(Resource(getModel("model/Mendiane.glb", glm::vec3(0.15f)), getTileRandPos(tile)));
         for (int i = 0; i < tile.phiras; i++)
-            tile.models.push_back(std::make_shared<Model>("model/min_5.glb", getTileRandPos(tile), glm::vec3(0.15f), glm::vec3(0.f), glm::vec3(0.f)));
+            tile._resources.push_back(Resource(getModel("model/Phiras.glb", glm::vec3(0.15f)), getTileRandPos(tile)));
+        for (int i = 0; i < tile.sibur; i++)
+            tile._resources.push_back(Resource(getModel("model/Sibur.glb", glm::vec3(0.15f)), getTileRandPos(tile)));
         for (int i = 0; i < tile.thystame; i++)
-            tile.models.push_back(std::make_shared<Model>("model/min_6.glb", getTileRandPos(tile), glm::vec3(0.15f), glm::vec3(0.f), glm::vec3(0.f)));
+            tile._resources.push_back(Resource(getModel("model/Thystame.glb", glm::vec3(0.15f)), getTileRandPos(tile)));
         for (int i = 0; i < tile.food; i++)
-            tile.models.push_back(std::make_shared<Model>("model/Food.glb", getTileRandPos(tile), glm::vec3(200.f), glm::vec3(0.f), glm::vec3(0.f)));
+            tile._resources.push_back(Resource(getModel("model/Food.glb", glm::vec3(200.f)), getTileRandPos(tile)));
     }
 
-    for (auto& resource : tile.models)
-        resource->Draw(*_shader);
+    for (auto& resource : tile._resources) {
+        glm::mat4 model = glm::translate(glm::mat4(1.f), resource._pos);
+        _shader->setMat4("model", model);
+        resource._model->Draw(*_shader, resource._pos);
+    }
 }
 
 std::unique_ptr<Mesh> Renderer::initTile()
@@ -149,7 +161,7 @@ std::unique_ptr<Mesh> Renderer::initTile()
     };
 
     GLuint texId;
-    texId = TextureLoader::load("grass.jpg");
+    texId = TextureLoader::load("rock.jpg");
 
     std::vector<Texture> textures = {{ texId, "texture_diffuse" }};
     return std::make_unique<Mesh>(vertices, indices, textures);
@@ -179,8 +191,12 @@ void Renderer::uptPlayerModel(int playerId, std::shared_ptr<Model> &playerModel,
             glm::vec3(player->_x, 0.f, player->_y),
             getPlayerRotation(player->_orientation)
         );
+        _playerAnimations[playerId] = player->_animation;
+        _playerAnimationTimers[playerId] = getAnimationDuration(player->_animation);
     } else {
         _playersModels.erase(playerId);
+        _playerAnimations.erase(playerId);
+        _playerAnimationTimers.erase(playerId);
     }
 }
 
@@ -215,4 +231,11 @@ glm::vec3 Renderer::getTileRandPos(const Tile& tile)
     float offsetZ = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
 
     return {tile.x + offsetX, 0.f, tile.z + offsetZ};
+}
+
+std::shared_ptr<Model> Renderer::getModel(const std::string path, glm::vec3 scale)
+{
+    if (_modelsCache.find(path) == _modelsCache.end())
+        _modelsCache[path] = std::make_shared<Model>(path, glm::vec3(0.f, 0.f, 0.f), scale);
+    return _modelsCache[path];;
 }
