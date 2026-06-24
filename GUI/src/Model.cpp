@@ -154,7 +154,6 @@ std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType 
         Texture texture;
         texture.id   = TextureLoader::load(str.C_Str(), _directory, scene);
         texture.type = typeName;
-        texture.path = str;
         textures.push_back(texture);
     }
     return textures;

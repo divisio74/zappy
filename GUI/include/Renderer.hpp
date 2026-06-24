@@ -52,6 +52,7 @@ class Renderer {
         Camera                     _camera;
         std::unique_ptr<Shader>    _shader;
         std::unique_ptr<Mesh>      _tileMesh;
+        std::vector<GLuint>        _groundTextures;
         std::map<int, std::string> _playerAnimations;
         std::map<int, float>       _playerAnimationTimers;
         std::map<std::string, std::shared_ptr<Model>> _modelsCache;

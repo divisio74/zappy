@@ -15,6 +15,7 @@ struct Tile {
 
     float x;
     float z;
+    int textureIndex = -1;
 
     std::vector<Resource> _resources;
 

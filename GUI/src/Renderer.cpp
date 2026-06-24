@@ -73,6 +73,11 @@ void Renderer::init()
     srand(time(0));
 
     _shader = std::make_unique<Shader>("shaders/vertex.glsl", "shaders/fragment.glsl");
+    _groundTextures.push_back(TextureLoader::load("ground_1.jpg"));
+    _groundTextures.push_back(TextureLoader::load("ground_2.jpg"));
+    _groundTextures.push_back(TextureLoader::load("ground_2.jpg"));
+    _groundTextures.push_back(TextureLoader::load("ground_2.jpg"));
+    _groundTextures.push_back(TextureLoader::load("ground_3.jpg"));
     _tileMesh = initTile();
 }
 
@@ -134,6 +139,10 @@ void Renderer::renderTile(Tile& tile, float x, float z)
 
     glm::mat4 model = glm::translate(glm::mat4(1.f), glm::vec3(x, 0.f, z));
     _shader->setMat4("model", model);
+    if (tile.textureIndex == -1)
+        tile.textureIndex = rand() % 5;
+
+    _tileMesh->textures[0].id = _groundTextures[tile.textureIndex];
     _tileMesh->Draw(*_shader);
 
     if (tile._resources.empty()) {

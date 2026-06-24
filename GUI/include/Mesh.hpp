@@ -29,13 +29,12 @@ struct Vertex {
 struct Texture {
     unsigned int id;
     std::string type;
-    aiString path;
 };  
 
 class Mesh {
     public:
         std::vector<Vertex>       vertices;
-        std::vector<unsigned int> indices;
+        std::vector<unsigned int> indices; // ces 3 attributs devraient etre private a mon avis
         std::vector<Texture>      textures;
 
         Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures);
