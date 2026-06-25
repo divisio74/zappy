@@ -593,6 +593,14 @@ void AiHandler::execIncantation(Player &player)
 
 void AiHandler::execBroadcast(Player &player, const std::string &text)
 {
+    for (auto &[id, receiver] : _world.players) {
+        if (id == player.getId())
+            continue;
+
+        const int direction = getBroadcastDirection(receiver, player, _world.size);
+        addMessage(receiver.getId(),
+            "message " + std::to_string(direction) + ", " + text);
+    }
     queueGuiEvent({.type = GuiEventType::Broadcast,
         .playerId = player.getId(),
         .message = text});
@@ -632,19 +640,6 @@ void AiHandler::execTake(Player &player, const std::string &object)
     addMessage(player.getId(), "ok");
 }
 
-void AiHandler::execBroadcast(Player &player, const std::string &text)
-{
-    for (auto &[id, receiver] : _world.players) {
-        if (id == player.getId())
-            continue;
-
-        const int direction = getBroadcastDirection(receiver, player, _world.size);
-        addMessage(receiver.getId(),
-            "message " + std::to_string(direction) + ", " + text);
-    }
-    addMessage(player.getId(), "ok");
-}
-
 void AiHandler::execSet(Player &player, const std::string &object)
 {
     ResourceType type;
@@ -661,11 +656,4 @@ void AiHandler::execSet(Player &player, const std::string &object)
     _world.ressources.push_back(resource);
     _world.map[pos.y][pos.x].getRessources().push_back(resource);
     addMessage(player.getId(), "ok");
-}
-
-void AiHandler::execSet(Player &player, const std::string &object)
-{
-    static_cast<void>(player);
-    static_cast<void>(object);
-    return;
 }

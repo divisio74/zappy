@@ -21,7 +21,7 @@ struct CostStruct {
     int thystame;
 };
 
-inline const extern std::unordered_map<int, CostStruct> evolutionCosts;
+extern std::unordered_map<int, CostStruct> evolutionCosts;
 
 struct playerAction
 {
