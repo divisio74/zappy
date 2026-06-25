@@ -1,8 +1,9 @@
 #include "core/entities/Egg.hpp"
 
-Egg::Egg(Vector2 coordinate, std::size_t teamId)
+Egg::Egg(Vector2 coordinate, std::size_t teamId, std::size_t id)
     : _coordinate(coordinate),
-      _teamId(teamId)
+      _teamId(teamId),
+      _id(id)
 {
 }
 
@@ -24,4 +25,9 @@ std::size_t Egg::getTeamId() const
 void Egg::setTeamId(std::size_t teamId)
 {
     _teamId = teamId;
+}
+
+std::size_t Egg::getId() const
+{
+    return _id;
 }

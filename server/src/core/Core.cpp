@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 #include <sstream>
+#include <string>
 #include <vector>
 
 namespace {
@@ -25,7 +26,9 @@ Core::Core(const ServerConfig &config)
     : _worldHandling(_worldData),
       _socketRegistry("0.0.0.0", config.port, config.clientsNb),
       _guiHandler(_worldData),
-      _aiHandler(_worldData),
+      _aiHandler(_worldData, [this](const GuiEvent &event) {
+          queueGuiEvent(event);
+      }),
       _teamNames(config.teamNames),
       _tickDuration(std::chrono::milliseconds(1000 / config.freq)),
       _lastTickTime(std::chrono::steady_clock::now()),
@@ -55,9 +58,9 @@ void Core::processServerTick()
     for (std::size_t socketId : _socketRegistry.getLostConnections())
         cleanupDisconnectedClient(socketId);
 
+    processAiActions();
     processTimedWorldEvents();
-
-    // TODO: Flush handler responses to sockets.
+    sendGuiMessages();
 }
 
 void Core::greetNewClient(std::size_t socketId)
@@ -88,6 +91,7 @@ void Core::identifyClient(std::size_t socketId, const std::string &command)
 {
     if (command == "GRAPHIC") {
         _socketRegistry.setSocketState(socketId, SocketRegistry::SocketState::Gui);
+        sendGuiInitialState(socketId);
         return;
     }
 
@@ -106,9 +110,7 @@ void Core::identifyClient(std::size_t socketId, const std::string &command)
     }
     _socketRegistry.setSocketState(socketId, SocketRegistry::SocketState::Ai);
     _socketRegistry.assignBusinessId(socketId, playerId.value());
-    std::cout << "placeholder: call AI connect for player "
-              << playerId.value() << std::endl;
-    // TODO: Send the Zappy AI connection response: remaining slots and map size.
+    sendAiConnectionData(socketId, playerId.value());
 }
 
 void Core::processAiClientCommand(std::size_t socketId,
@@ -119,12 +121,9 @@ void Core::processAiClientCommand(std::size_t socketId,
     if (!businessId.has_value())
         return;
 
-    static_cast<void>(command);
-    std::cout << "placeholder: call AI handler for player "
-              << businessId.value() << std::endl;
-    _socketRegistry.write(socketId, "ko");
-    // TODO: Call _aiHandler.parseCommand(playerId, commands) after the socket
-    // has been attached to a real Player in _worldData.players.
+    std::vector<std::string> commands = {command};
+
+    _aiHandler.parseCommand(businessId.value(), commands);
 }
 
 void Core::processGuiClientCommand(std::size_t socketId,
@@ -132,17 +131,37 @@ void Core::processGuiClientCommand(std::size_t socketId,
 {
     std::vector<std::string> responses = _guiHandler.handleCommand(command);
 
+    if (getCommandName(command) == "sst" && responses.size() == 1
+        && getCommandName(responses[0]) == "sst") {
+        updateTickDuration();
+        queueGuiEvent({.type = GuiEventType::TimeUnitModification,
+            .timeUnit = _worldData.freq});
+        return;
+    }
     for (const std::string &response : responses)
         _socketRegistry.write(socketId, response);
-    if (getCommandName(command) == "sst" && responses.size() == 1
-        && responses[0] != "error")
-        updateTickDuration();
 }
 
 void Core::cleanupDisconnectedClient(std::size_t socketId)
 {
-    static_cast<void>(socketId);
-    // TODO: Remove the matching GUI/player state once socketId -> client kind is known.
+    if (_socketRegistry.getSocketState(socketId) == SocketRegistry::SocketState::Ai) {
+        std::optional<std::size_t> playerId = _socketRegistry.getBusinessId(socketId);
+
+        if (playerId.has_value()) {
+            auto player = _worldData.players.find(playerId.value());
+
+            if (player != _worldData.players.end()) {
+                auto team = _worldData.teams.find(player->second.getTeamId());
+
+                if (team != _worldData.teams.end() && team->second.getUsedSlot() > 0)
+                    team->second.setUsedSlot(team->second.getUsedSlot() - 1);
+                queueGuiEvent({.type = GuiEventType::PlayerDeath,
+                    .playerId = playerId.value()});
+                _worldData.players.erase(player);
+            }
+        }
+    }
+    _socketRegistry.removeSocket(socketId);
 }
 
 void Core::processTimedWorldEvents()
@@ -154,9 +173,156 @@ void Core::processTimedWorldEvents()
         _resourceSpawnTicks++;
         if (_resourceSpawnTicks >= RESOURCE_SPAWN_INTERVAL) {
             _worldHandling.spawnRessources();
+            queueGuiEvent({.type = GuiEventType::MapContent});
             _resourceSpawnTicks = 0;
         }
     }
+}
+
+void Core::processAiActions()
+{
+    _aiHandler.run();
+    sendAiMessages();
+}
+
+void Core::sendAiMessages()
+{
+    std::vector<message> messages = _aiHandler.getMessages();
+
+    for (const message &aiMessage : messages) {
+        std::optional<std::size_t> socketId =
+            _socketRegistry.getSocketIdByBusinessId(aiMessage.playerId);
+
+        if (socketId.has_value())
+            _socketRegistry.write(socketId.value(), aiMessage.message);
+    }
+}
+
+void Core::queueGuiEvent(const GuiEvent &event)
+{
+    _guiEvents.push(event);
+}
+
+void Core::sendGuiMessages()
+{
+    std::vector<std::size_t> guiSockets =
+        _socketRegistry.getSocketIdsByState(SocketRegistry::SocketState::Gui);
+
+    while (!_guiEvents.empty()) {
+        std::vector<std::string> messages = formatGuiEvent(_guiEvents.front());
+
+        _guiEvents.pop();
+        for (std::size_t socketId : guiSockets) {
+            for (const std::string &message : messages)
+                _socketRegistry.write(socketId, message);
+        }
+    }
+}
+
+void Core::sendGuiInitialState(std::size_t socketId)
+{
+    _socketRegistry.write(socketId, _guiHandler.formatMapSize());
+    for (const std::string &message : _guiHandler.formatMapContent())
+        _socketRegistry.write(socketId, message);
+    for (const std::string &message : _guiHandler.formatTeamNames())
+        _socketRegistry.write(socketId, message);
+    for (const auto &[id, player] : _worldData.players) {
+        static_cast<void>(id);
+        _socketRegistry.write(socketId, _guiHandler.formatPlayerConnection(player));
+        _socketRegistry.write(socketId, _guiHandler.formatPlayerLevel(player.getId()));
+        _socketRegistry.write(socketId, _guiHandler.formatPlayerInventory(player.getId()));
+    }
+    for (const Egg &egg : _worldData.eggs) {
+        const Vector2 &position = egg.getCoordinate();
+
+        _socketRegistry.write(socketId,
+            _guiHandler.formatEggLaid(egg.getId(), 0, position.x, position.y));
+    }
+    _socketRegistry.write(socketId, _guiHandler.formatTimeUnit());
+}
+
+std::vector<std::string> Core::formatGuiEvent(const GuiEvent &event) const
+{
+    switch (event.type) {
+    case GuiEventType::MapSize:
+        return {_guiHandler.formatMapSize()};
+    case GuiEventType::TileContent:
+        return {_guiHandler.formatTileContent(event.x, event.y)};
+    case GuiEventType::MapContent:
+        return _guiHandler.formatMapContent();
+    case GuiEventType::TeamNames:
+        return _guiHandler.formatTeamNames();
+    case GuiEventType::PlayerConnection: {
+        auto player = _worldData.players.find(event.playerId);
+
+        if (player == _worldData.players.end())
+            return {};
+        return {_guiHandler.formatPlayerConnection(player->second)};
+    }
+    case GuiEventType::PlayerPosition:
+        return {_guiHandler.formatPlayerPosition(event.playerId)};
+    case GuiEventType::PlayerLevel:
+        return {_guiHandler.formatPlayerLevel(event.playerId)};
+    case GuiEventType::PlayerInventory:
+        return {_guiHandler.formatPlayerInventory(event.playerId)};
+    case GuiEventType::Expulsion:
+        return {_guiHandler.formatExpulsion(event.playerId)};
+    case GuiEventType::Broadcast:
+        return {_guiHandler.formatBroadcast(event.playerId, event.message)};
+    case GuiEventType::IncantationStart:
+        return {_guiHandler.formatIncantationStart(event.x, event.y,
+            event.level, event.playerIds)};
+    case GuiEventType::IncantationEnd:
+        return {_guiHandler.formatIncantationEnd(event.x, event.y,
+            event.result)};
+    case GuiEventType::EggLaying:
+        return {_guiHandler.formatEggLaying(event.playerId)};
+    case GuiEventType::ResourceDrop:
+        return {_guiHandler.formatResourceDrop(event.playerId, event.resource)};
+    case GuiEventType::ResourceCollect:
+        return {_guiHandler.formatResourceCollect(event.playerId, event.resource)};
+    case GuiEventType::PlayerDeath:
+        return {_guiHandler.formatPlayerDeath(event.playerId)};
+    case GuiEventType::EggLaid:
+        return {_guiHandler.formatEggLaid(event.eggId, event.playerId,
+            event.x, event.y)};
+    case GuiEventType::EggConnection:
+        return {_guiHandler.formatEggConnection(event.eggId)};
+    case GuiEventType::EggDeath:
+        return {_guiHandler.formatEggDeath(event.eggId)};
+    case GuiEventType::TimeUnit:
+        return {_guiHandler.formatTimeUnit()};
+    case GuiEventType::TimeUnitModification:
+        return {_guiHandler.formatTimeUnitModification(event.timeUnit)};
+    case GuiEventType::EndGame:
+        return {_guiHandler.formatEndGame(event.teamName)};
+    case GuiEventType::ServerMessage:
+        return {_guiHandler.formatServerMessage(event.message)};
+    case GuiEventType::UnknownCommand:
+        return {"suc"};
+    case GuiEventType::BadParameter:
+        return {"sbp"};
+    }
+    return {};
+}
+
+void Core::sendAiConnectionData(std::size_t socketId, std::size_t playerId)
+{
+    auto player = _worldData.players.find(playerId);
+
+    if (player == _worldData.players.end())
+        return;
+
+    auto team = _worldData.teams.find(player->second.getTeamId());
+
+    if (team == _worldData.teams.end())
+        return;
+
+    std::size_t availableSlots = team->second.getMaxSlot() - team->second.getUsedSlot();
+
+    _socketRegistry.write(socketId, std::to_string(availableSlots));
+    _socketRegistry.write(socketId,
+        std::to_string(_worldData.size.x) + " " + std::to_string(_worldData.size.y));
 }
 
 void Core::updateTickDuration()
@@ -188,30 +354,28 @@ std::optional<std::size_t> Core::spawnPlayerFromTeamEgg(std::size_t teamId)
         return std::nullopt;
 
     auto eggIt = std::find_if(_worldData.eggs.begin(), _worldData.eggs.end(),
-        [teamId](const std::shared_ptr<Egg> &egg) {
-            return egg != nullptr && egg->getTeamId() == teamId;
+        [teamId](const Egg &egg) {
+            return egg.getTeamId() == teamId;
         });
 
     if (eggIt == _worldData.eggs.end())
         return std::nullopt;
 
-    std::shared_ptr<Egg> egg = *eggIt;
-    Vector2 position = egg->getCoordinate();
+    Vector2 position = eggIt->getCoordinate();
+    std::size_t eggId = eggIt->getId();
     std::size_t playerId = _nextPlayerId++;
 
     team.setUsedSlot(team.getUsedSlot() + 1);
     _worldData.players.emplace(playerId,
         Player(position, Direction::North, playerId, teamId));
 
-    auto removeEgg = [&egg](std::vector<std::shared_ptr<Egg>> &eggs) {
-        eggs.erase(std::remove(eggs.begin(), eggs.end(), egg), eggs.end());
-    };
-
-    removeEgg(_worldData.eggs);
-    if (position.y >= 0 && position.y < static_cast<int>(_worldData.map.size())
-        && position.x >= 0
-        && position.x < static_cast<int>(_worldData.map[position.y].size()))
-        removeEgg(_worldData.map[position.y][position.x].getEggs());
+    _worldData.eggs.erase(eggIt);
+    queueGuiEvent({.type = GuiEventType::EggConnection,
+        .eggId = eggId});
+    queueGuiEvent({.type = GuiEventType::PlayerConnection,
+        .playerId = playerId});
+    queueGuiEvent({.type = GuiEventType::PlayerInventory,
+        .playerId = playerId});
 
     // TODO: Keep Team/Tile player shared_ptr storage in sync with WorldData.players.
     return playerId;

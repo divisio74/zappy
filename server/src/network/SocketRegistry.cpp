@@ -118,20 +118,23 @@ SocketRegistry::SocketState SocketRegistry::getSocketState(std::size_t socketId)
     return _sockets[index].state;
 }
 
+std::vector<std::size_t> SocketRegistry::getSocketIdsByState(
+    SocketRegistry::SocketState state) const
+{
+    std::vector<std::size_t> socketIds;
+
+    for (const auto &entry : _sockets) {
+        if (entry.state == state)
+            socketIds.push_back(entry.socketId);
+    }
+    return socketIds;
+}
+
 std::vector<std::size_t> SocketRegistry::getLostConnections()
 {
     std::vector<std::size_t> lostConnections = _lostConnections;
 
-    for (std::size_t socketId : lostConnections) {
-        auto index = _indexById.find(socketId);
-
-        if (index != _indexById.end()) {
-            _sockets.erase(_sockets.begin() + index->second);
-            refreshIndexes();
-        }
-    }
     _lostConnections.clear();
-    refreshIndexes();
     return lostConnections;
 }
 

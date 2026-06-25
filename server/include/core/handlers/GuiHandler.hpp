@@ -38,6 +38,7 @@ public:
     std::string formatEggConnection(std::size_t eggId) const;
     std::string formatEggDeath(std::size_t eggId) const;
     std::string formatTimeUnit() const;
+    std::string formatTimeUnitModification(int timeUnit) const;
     std::string formatEndGame(const std::string &teamName) const;
     std::string formatServerMessage(const std::string &message) const;
 

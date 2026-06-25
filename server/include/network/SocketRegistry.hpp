@@ -35,6 +35,7 @@ public:
     std::optional<std::size_t> getSocketIdByBusinessId(std::size_t businessId) const;
     void setSocketState(std::size_t socketId, SocketState state);
     SocketState getSocketState(std::size_t socketId) const;
+    std::vector<std::size_t> getSocketIdsByState(SocketState state) const;
 
     std::vector<std::size_t> getLostConnections();
     std::vector<std::string> read(std::size_t socketId, std::size_t size = 4096);

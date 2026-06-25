@@ -3,10 +3,12 @@
 #include <chrono>
 #include <cstddef>
 #include <optional>
+#include <queue>
 #include <string>
 #include <vector>
 
 #include "core/handlers/AiHandler.hpp"
+#include "core/handlers/GuiEvent.hpp"
 #include "core/handlers/GuiHandler.hpp"
 #include "core/world/WorldData.hpp"
 #include "core/world/WorldHandling.hpp"
@@ -19,6 +21,7 @@ public:
 
     void runServer();
     void processServerTick();
+    void queueGuiEvent(const GuiEvent &event);
 
     WorldData &getWorldData();
     const WorldData &getWorldData() const;
@@ -38,6 +41,12 @@ private:
         const std::string &command);
     void cleanupDisconnectedClient(std::size_t socketId);
     void processTimedWorldEvents();
+    void processAiActions();
+    void sendAiMessages();
+    void sendGuiMessages();
+    void sendGuiInitialState(std::size_t socketId);
+    std::vector<std::string> formatGuiEvent(const GuiEvent &event) const;
+    void sendAiConnectionData(std::size_t socketId, std::size_t playerId);
     void updateTickDuration();
     std::optional<std::size_t> findTeamByName(const std::string &teamName) const;
     std::optional<std::size_t> spawnPlayerFromTeamEgg(std::size_t teamId);
@@ -48,6 +57,7 @@ private:
     SocketRegistry _socketRegistry;
     GuiHandler _guiHandler;
     AiHandler _aiHandler;
+    std::queue<GuiEvent> _guiEvents;
     std::vector<std::string> _teamNames;
     std::chrono::milliseconds _tickDuration;
     std::chrono::steady_clock::time_point _lastTickTime;

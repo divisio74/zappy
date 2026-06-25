@@ -20,7 +20,7 @@ struct EvolutionCost {
     int thystame;
 };
 
-std::unordered_map<int, EvolutionCost> evolutionCosts = {
+inline const std::unordered_map<int, EvolutionCost> evolutionCosts = {
     {1, {1, 1, 0, 0, 0, 0, 0}},  // 1->2
     {2, {2, 1, 1, 1, 0, 0, 0}},  // 2->3
     {3, {2, 2, 0, 1, 0, 2, 0}},  // 3->4

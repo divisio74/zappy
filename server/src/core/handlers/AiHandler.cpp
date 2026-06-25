@@ -2,7 +2,6 @@
 
 #include <string>
 #include <sstream>
-#include "AiHandler.hpp"
 
 const std::unordered_map<std::string, int> AiHandler::ACTION_COSTS = {
     {"Forward",     7},
@@ -18,9 +17,32 @@ const std::unordered_map<std::string, int> AiHandler::ACTION_COSTS = {
     {"Set",         7},
 };
 
+AiHandler::AiHandler(WorldData &world, std::function<void(const GuiEvent&)> queueGuiEvent)
+    : _world(world),
+      _queueGuiEvent(queueGuiEvent)
+{
+}
+
 void AiHandler::addMessage(size_t id, std::string message)
 {
     _messageQueue.push({id, message + "\n"});
+}
+
+void AiHandler::queueGuiEvent(const GuiEvent &event)
+{
+    if (_queueGuiEvent)
+        _queueGuiEvent(event);
+}
+
+std::vector<message> AiHandler::getMessages()
+{
+    std::vector<message> messages;
+
+    while (!_messageQueue.empty()) {
+        messages.push_back(_messageQueue.front());
+        _messageQueue.pop();
+    }
+    return messages;
 }
 
 void AiHandler::parseCommand(size_t playerId, std::vector<std::string> &commands)
@@ -47,7 +69,7 @@ void AiHandler::parseCommand(size_t playerId, std::vector<std::string> &commands
             }
             enqueueCommand(player, command);
         } else {
-            addMessage(playerId, "ko");
+            addMessage(playerId, "error");
         }
     }
 }
@@ -56,6 +78,8 @@ void AiHandler::run()
 {
     for (auto& [id, player] : _world.players) {
         auto& queue = player.getPlayerAction();
+        if (queue.empty())
+            continue;
         playerAction action = queue.front();
         auto now = std::chrono::steady_clock::now();
         if (action.executeAt < now) {
@@ -68,7 +92,7 @@ void AiHandler::run()
 
 void AiHandler::executeCommand(size_t playerId, const std::string &command)
 {
-    auto player = findPlayer(playerId);
+    Player &player = findPlayer(playerId);
 
     if (command == "Forward")     return execForward(player);
     if (command == "Right")       return execRight(player);
@@ -211,6 +235,8 @@ void AiHandler::execForward(Player &player)
     }
     pos = normalizePos(pos);
     player.setCoordinate(pos);
+    queueGuiEvent({.type = GuiEventType::PlayerPosition,
+        .playerId = player.getId()});
     addMessage(player.getId(), "ok");
 }
 
@@ -219,6 +245,8 @@ void AiHandler::execRight(Player &player)
     int dir = static_cast<int>(player.getDirection());
 
     player.setDirection(static_cast<Direction>((dir + 1) % 4));
+    queueGuiEvent({.type = GuiEventType::PlayerPosition,
+        .playerId = player.getId()});
     addMessage(player.getId(), "ok");
 }
 
@@ -227,6 +255,8 @@ void AiHandler::execLeft(Player &player)
     int dir = static_cast<int>(player.getDirection());
     dir = (dir + 3) % 4;
     player.setDirection(static_cast<Direction>(dir));
+    queueGuiEvent({.type = GuiEventType::PlayerPosition,
+        .playerId = player.getId()});
     addMessage(player.getId(), "ok");
 }
 
@@ -311,8 +341,18 @@ void AiHandler::execConnectNbr(Player &player)
 void AiHandler::execFork(Player &player)
 {
     Team& team = _world.teams[player.getTeamId()];
+    const Vector2 &position = player.getCoordinate();
+    std::size_t eggId = _world.nextEggId++;
+
     team.setMaxSlot(team.getMaxSlot() + 1);
-    _world.eggs.push_back(Egg(player.getCoordinate(), player.getTeamId()));
+    _world.eggs.push_back(Egg(position, player.getTeamId(), eggId));
+    queueGuiEvent({.type = GuiEventType::EggLaying,
+        .playerId = player.getId()});
+    queueGuiEvent({.type = GuiEventType::EggLaid,
+        .x = position.x,
+        .y = position.y,
+        .playerId = player.getId(),
+        .eggId = eggId});
     addMessage(player.getId(), "ok");
 }
 
@@ -326,7 +366,22 @@ void AiHandler::execIncantation(Player &player)
     return;
 }
 
+void AiHandler::execBroadcast(Player &player, const std::string &text)
+{
+    queueGuiEvent({.type = GuiEventType::Broadcast,
+        .playerId = player.getId(),
+        .message = text});
+    addMessage(player.getId(), "ok");
+}
+
 void AiHandler::execTake(Player &player, const std::string &object)
 {
+    return;
+}
+
+void AiHandler::execSet(Player &player, const std::string &object)
+{
+    static_cast<void>(player);
+    static_cast<void>(object);
     return;
 }

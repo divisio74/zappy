@@ -4,7 +4,8 @@
 #include <sstream>
 
 namespace {
-const std::string ERROR_RESPONSE = "error";
+const std::string UNKNOWN_COMMAND_RESPONSE = "suc";
+const std::string BAD_PARAMETER_RESPONSE = "sbp";
 constexpr int MAX_FREQUENCY = 1000;
 
 enum class GuiCommand {
@@ -123,7 +124,7 @@ std::vector<std::string> GuiHandler::handleCommand(const std::string &command)
     std::vector<std::string> args = splitCommand(command);
 
     if (args.empty())
-        return {ERROR_RESPONSE};
+        return {UNKNOWN_COMMAND_RESPONSE};
 
     switch (getGuiCommand(args[0])) {
     case GuiCommand::MapSize:
@@ -145,9 +146,9 @@ std::vector<std::string> GuiHandler::handleCommand(const std::string &command)
     case GuiCommand::TimeUnitModification:
         return {handleTimeUnitModification(args)};
     case GuiCommand::Unknown:
-        return {ERROR_RESPONSE};
+        return {UNKNOWN_COMMAND_RESPONSE};
     }
-    return {ERROR_RESPONSE};
+    return {UNKNOWN_COMMAND_RESPONSE};
 }
 
 const std::vector<std::vector<Tile>> &GuiHandler::getMap() const
@@ -220,7 +221,7 @@ std::string GuiHandler::formatPlayerPosition(std::size_t playerId) const
     std::ostringstream response;
 
     if (player == _worldData.players.end())
-        return ERROR_RESPONSE;
+        return BAD_PARAMETER_RESPONSE;
 
     const Vector2 &position = player->second.getCoordinate();
 
@@ -236,7 +237,7 @@ std::string GuiHandler::formatPlayerLevel(std::size_t playerId) const
     std::ostringstream response;
 
     if (player == _worldData.players.end())
-        return ERROR_RESPONSE;
+        return BAD_PARAMETER_RESPONSE;
     response << "plv #" << playerId << " " << player->second.getLevel();
     return response.str();
 }
@@ -247,7 +248,7 @@ std::string GuiHandler::formatPlayerInventory(std::size_t playerId) const
     std::ostringstream response;
 
     if (player == _worldData.players.end())
-        return ERROR_RESPONSE;
+        return BAD_PARAMETER_RESPONSE;
 
     const Vector2 &position = player->second.getCoordinate();
     const Inventory &inventory = player->second.getInventory();
@@ -338,6 +339,11 @@ std::string GuiHandler::formatTimeUnit() const
     return "sgt " + std::to_string(_worldData.freq);
 }
 
+std::string GuiHandler::formatTimeUnitModification(int timeUnit) const
+{
+    return "sst " + std::to_string(timeUnit);
+}
+
 std::string GuiHandler::formatEndGame(const std::string &teamName) const
 {
     return "seg " + teamName;
@@ -351,7 +357,7 @@ std::string GuiHandler::formatServerMessage(const std::string &message) const
 std::string GuiHandler::handleMapSize(const std::vector<std::string> &args) const
 {
     if (args.size() != 1)
-        return ERROR_RESPONSE;
+        return BAD_PARAMETER_RESPONSE;
     return formatMapSize();
 }
 
@@ -362,7 +368,7 @@ std::string GuiHandler::handleTileContent(const std::vector<std::string> &args) 
 
     if (args.size() != 3 || !parsePositiveNumber(args[1], x)
         || !parsePositiveNumber(args[2], y) || !isPositionValid(x, y))
-        return ERROR_RESPONSE;
+        return BAD_PARAMETER_RESPONSE;
     return formatTileContent(x, y);
 }
 
@@ -370,7 +376,7 @@ std::vector<std::string> GuiHandler::handleMapContent(
     const std::vector<std::string> &args) const
 {
     if (args.size() != 1)
-        return {ERROR_RESPONSE};
+        return {BAD_PARAMETER_RESPONSE};
     return formatMapContent();
 }
 
@@ -378,7 +384,7 @@ std::vector<std::string> GuiHandler::handleTeamNames(
     const std::vector<std::string> &args) const
 {
     if (args.size() != 1)
-        return {ERROR_RESPONSE};
+        return {BAD_PARAMETER_RESPONSE};
     return formatTeamNames();
 }
 
@@ -388,7 +394,7 @@ std::string GuiHandler::handlePlayerPosition(
     std::size_t playerId = 0;
 
     if (args.size() != 2 || !parsePlayerId(args[1], playerId))
-        return ERROR_RESPONSE;
+        return BAD_PARAMETER_RESPONSE;
     return formatPlayerPosition(playerId);
 }
 
@@ -398,7 +404,7 @@ std::string GuiHandler::handlePlayerLevel(
     std::size_t playerId = 0;
 
     if (args.size() != 2 || !parsePlayerId(args[1], playerId))
-        return ERROR_RESPONSE;
+        return BAD_PARAMETER_RESPONSE;
     return formatPlayerLevel(playerId);
 }
 
@@ -408,14 +414,14 @@ std::string GuiHandler::handlePlayerInventory(
     std::size_t playerId = 0;
 
     if (args.size() != 2 || !parsePlayerId(args[1], playerId))
-        return ERROR_RESPONSE;
+        return BAD_PARAMETER_RESPONSE;
     return formatPlayerInventory(playerId);
 }
 
 std::string GuiHandler::handleTimeUnit(const std::vector<std::string> &args) const
 {
     if (args.size() != 1)
-        return ERROR_RESPONSE;
+        return BAD_PARAMETER_RESPONSE;
     return formatTimeUnit();
 }
 
@@ -426,7 +432,7 @@ std::string GuiHandler::handleTimeUnitModification(
 
     if (args.size() != 2 || !parsePositiveNumber(args[1], frequency)
         || frequency <= 0 || frequency > MAX_FREQUENCY)
-        return ERROR_RESPONSE;
+        return BAD_PARAMETER_RESPONSE;
     _worldData.freq = frequency;
     return "sst " + std::to_string(_worldData.freq);
 }

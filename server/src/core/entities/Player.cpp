@@ -1,5 +1,4 @@
 #include "core/entities/Player.hpp"
-#include "Player.hpp"
 
 Player::Player(Vector2 coordinate, Direction direction, std::size_t id, std::size_t teamId)
     : _coordinate(coordinate),
