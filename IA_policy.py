@@ -12,6 +12,17 @@ from IA_helpers_together_inv import broadcast_inventory
 from IA_navigation import update_nav
 from IA_search_mode import search_food_or_t, search_level1, search_level2, search_level3, search_level4, search_level5, search_level6, search_level7
 
+def refresh_view(conn, state):
+    look_line = get_response(conn, state)
+    if look_line == "dead":
+        return False
+    state["vision"] = parsing_vision(look_line)
+    stuff_line = get_response(conn, state)
+    if stuff_line == "dead":
+        return False
+    state["stuff"] = parsing_stuff(stuff_line)
+    return True
+
 def handle_fork(state, player_id, host, port, team_name):
     child_id = None
     if player_id == 1:
@@ -76,47 +87,54 @@ def run(host, port, team_name, player_id):
     conn = Connection(host, port)
     slots, width, height = handshake(conn, team_name)
     print(f"[handshake] Validé : slots restants={slots}  map={width}x{height}")
-    last = ""
+    state = {"width": width, "height": height, "vision": [], "id": player_id, "last": "", "stuff": {}, "level": 1, "broadcast": [], "team": {}, "spawned_ids": [], "feeding": False}
+
+    conn.send_batch(["Look", "Inventory"])
+    if not refresh_view(conn, state):
+        print("[mort] L'entité est morte de faim.")
+        conn.close()
+        return
+
     action_len = 0
-    level = 1
-    state = {"width": width, "height": height, "vision": [], "id": player_id, "last": last, "stuff": {},"level": level, "broadcast": [], "team": {}, "spawned_ids": [], "feeding": False}
     try:
         while True:
-            conn.send("Look")
-            look_line = get_response(conn, state)
-            if look_line == "dead":
-                print("[mort] L'entité est morte de faim.")
-                break
-            state["vision"] = parsing_vision(look_line)
-
-            conn.send("Inventory")
-            stuff_line = get_response(conn, state)
-            state["stuff"] = parsing_stuff(stuff_line)
-            if action_len % 10 == 0:
-                conn.send(broadcast_inventory(state))
-                get_response(conn, state)
-
             command = Heuristique_policyV2(state, player_id)
             state["last"] = command
             update_nav(state, command)
             action_len = action_len + 1
 
-            conn.send(command)
             if command == "Incantation":
+                conn.send_batch(["Incantation", "Look", "Inventory"])
                 res = read_incantation_result(conn, state)
                 print(f"Vision={state['vision']}  ->  Incantation  ->  {res!r}  (Niveau={state['level']})")
+                if not refresh_view(conn, state):
+                    print("[mort] L'entité est morte de faim.")
+                    break
                 continue
 
             if command == "Fork":
-                handle_fork(state, player_id, host, port, team_name)
+                conn.send_batch(["Fork", "Look", "Inventory"])
                 get_response(conn, state)
+                handle_fork(state, player_id, host, port, team_name)
+                if not refresh_view(conn, state):
+                    print("[mort] L'entité est morte de faim.")
+                    break
                 continue
 
+            send_broadcast = (action_len % 10 == 0)
+            batch = [broadcast_inventory(state)] if send_broadcast else []
+            batch += [command, "Look", "Inventory"]
+            conn.send_batch(batch)
+
+            if send_broadcast:
+                get_response(conn, state)
             reply = get_response(conn, state)
-            if reply == "dead":
+            if reply == "dead" or not refresh_view(conn, state):
                 print("[mort] L'entité est morte de faim.")
                 break
 
+    except BrokenPipeError:
+        print("[mort] L'entité est morte de faim.")
     except (ConnectionError, KeyboardInterrupt) as e:
         print(f"[fin] {e}")
     finally:
