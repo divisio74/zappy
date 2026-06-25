@@ -88,8 +88,12 @@ void WorldHandling::createEggs(std::size_t teamId, std::size_t places)
     for (std::size_t i = 0; i < places; i++) {
         Vector2 position = getRandomPosition();
         Egg egg(position, teamId, _data.nextEggId++);
+        Egg egg(position, teamId);
 
         _data.eggs.push_back(egg);
+        if (position.y >= 0 && static_cast<std::size_t>(position.y) < _data.map.size()
+            && position.x >= 0 && static_cast<std::size_t>(position.x) < _data.map[position.y].size())
+            _data.eggs.push_back(egg);
     }
 }
 
