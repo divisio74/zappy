@@ -37,12 +37,12 @@ def Heuristique_policyV2(state, player_id):
 
     food = state["stuff"].get("food", 0)
     vision = state["vision"]
-    if vision and "food" in vision[0] and food <= 16:
+    if vision and "food" in vision[0] and food <= 24:
         return "Take food"
-    greedy = bool(vision) and vision[0].count("player") >= 5
-    if food < 6 or (food < 8 and not greedy):
+    rallying = (bool(vision) and vision[0].count("player") >= 5) or any(info.get("type") == "rally" for info in state["team"].values())
+    if food < 10 or (food < 12 and not rallying):
         state["feeding"] = True
-    elif food >= 16 or (greedy and food >= 8):
+    elif food >= 20 or (rallying and food >= 8):
         state["feeding"] = False
 
     if state.get("feeding"):
