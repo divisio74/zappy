@@ -6,12 +6,12 @@
 #include <vector>
 
 struct ServerConfig {
-    std::uint16_t port = 0;
-    std::size_t width = 0;
-    std::size_t height = 0;
-    std::vector<std::string> teamNames;
-    std::size_t clientsNb = 0;
-    std::size_t freq = 0;
+    std::uint16_t port = 4242;
+    std::size_t width = 10;
+    std::size_t height = 10;
+    std::vector<std::string> teamNames = {"team1", "team2"};
+    std::size_t clientsNb = 3;
+    std::size_t freq = 100;
 };
 
 class Parser {

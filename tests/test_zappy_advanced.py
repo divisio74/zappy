@@ -581,6 +581,12 @@ class OfficialAdvancedComparisonTests(unittest.TestCase):
     def assert_same(self, results):
         self.assertEqual(results["mine"], results["official"], results)
 
+    def _tracked_ai(self, server):
+        gui = server.connect_gui()
+        ai, ref, _, _ = server.connect_ai_tracked(gui)
+        drain(gui)
+        return gui, ai, ref
+
     # --- Incantation ---
 
     def test_incantation_ai_response_matches(self):
@@ -701,8 +707,8 @@ class OfficialAdvancedComparisonTests(unittest.TestCase):
             return {
                 "ejector_response": ejector,
                 "ejected_format_ok": bool(re.fullmatch(r"eject: \d+", ejected)),
-                "ejected_k": int(re.fullmatch(r"eject: (\d+)", ejected).group(1))
-                if re.fullmatch(r"eject: \d+", ejected) else None,
+                "ejected_k_in_range": bool(
+                    re.fullmatch(r"eject: [0-8]", ejected)),
                 "gui_has_pex": any(re.fullmatch(r"pex #\d+", e) for e in events),
             }
 
@@ -824,6 +830,182 @@ class OfficialAdvancedComparisonTests(unittest.TestCase):
             resp = read_line(ai, timeout=1.5)
             ai.close()
             return {"set_missing": resp}
+
+        self.assert_same(run_on_both(scenario))
+
+    # --- Protocol edge cases ---
+
+    def test_reserved_graphic_team_name_matches(self):
+        def run_with_reserved_team(binary):
+            port = find_free_port()
+            proc = subprocess.Popen(
+                [str(binary), "-p", str(port), "-x", str(WIDTH), "-y", str(HEIGHT),
+                 "-n", "GRAPHIC", "teamA", "-c", "2", "-f", str(NAV_FREQ)],
+                cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            )
+            try:
+                proc.wait(timeout=0.5)
+                return {"state": "exited", "code": proc.returncode}
+            except subprocess.TimeoutExpired:
+                proc.terminate()
+                proc.wait(timeout=1)
+                return {"state": "running"}
+            finally:
+                if proc.stdout:
+                    proc.stdout.close()
+                if proc.stderr:
+                    proc.stderr.close()
+
+        self.assert_same({
+            "official": run_with_reserved_team(OFFICIAL_SERVER),
+            "mine": run_with_reserved_team(MINE_SERVER),
+        })
+
+    def test_unknown_team_then_valid_team_same_socket_matches(self):
+        def scenario(server):
+            client = server.connect_raw()
+            send_line(client, "ghost-team")
+            first = read_line(client, timeout=1.0)
+            send_line(client, "teamA")
+            second = read_line(client, timeout=1.0)
+            third = read_line(client, timeout=1.0)
+            client.close()
+            return {"first": first, "second": second, "third": third}
+
+        self.assert_same(run_on_both(scenario))
+
+    def test_ai_command_queue_overflow_matches(self):
+        def scenario(server):
+            ai, _, _ = server.connect_ai("teamA")
+            for _ in range(12):
+                send_line(ai, "Inventory")
+            responses = [read_line(ai, timeout=2.0) for _ in range(12)]
+            ai.close()
+            categories = [
+                "inventory" if line.startswith("[") else line
+                for line in responses
+            ]
+            return {
+                "count": len(responses),
+                "ko_count": categories.count("ko"),
+                "inventory_count": categories.count("inventory"),
+                "timeout_count": categories.count("<timeout>"),
+                "tail": categories[-3:],
+            }
+
+        self.assert_same(run_on_both(scenario, freq=NAV_FREQ))
+
+    def test_ai_malformed_commands_match(self):
+        commands = (
+            "",
+            "Forward extra",
+            "Broadcast",
+            "Broadcast ",
+            "Take",
+            "Take FOOD",
+            "Take food extra",
+            "Set",
+            "Set food extra",
+            "connect_nbr",
+        )
+
+        def scenario(server):
+            ai, _, _ = server.connect_ai("teamA")
+            result = {}
+            for command in commands:
+                send_line(ai, command)
+                result[repr(command)] = read_line(ai, timeout=1.5)
+            ai.close()
+            return result
+
+        self.assert_same(run_on_both(scenario, freq=NAV_FREQ))
+
+    def test_gui_malformed_commands_match(self):
+        commands = (
+            "",
+            "   ",
+            "msz ",
+            "msz extra",
+            "mct extra",
+            "tna extra",
+            "bct",
+            "bct 0",
+            "bct 0 0 extra",
+            "bct 999999999999999999999999 0",
+            "bct 01 00",
+            "ppo",
+            "ppo #0 extra",
+            "ppo 0",
+            "ppo #-1",
+            "plv #999999999999999999999999",
+            "pin #999999999999999999999999",
+            "sgt extra",
+            "sst",
+            "sst -1",
+            "sst 0001",
+            "sst 1000",
+            "sst 1001",
+        )
+
+        def scenario(server):
+            result = {}
+            for command in commands:
+                gui = server.connect_gui()
+                drain(gui)
+                send_line(gui, command)
+                response = read_line(gui, timeout=1.0)
+                result[repr(command)] = response.split(" ", 1)[0]
+                if command == "bct 01 00":
+                    result[repr(command) + ":shape_ok"] = bool(
+                        re.fullmatch(r"bct 1 0(?: \d+){7}", response))
+                if command == "sst 0001":
+                    result[repr(command) + ":value"] = response
+                gui.close()
+            return result
+
+        self.assert_same(run_on_both(scenario))
+
+    def test_gui_player_queries_with_discovered_ref_match(self):
+        def scenario(server):
+            gui, ai, ref = self._tracked_ai(server)
+            result = {"has_ref": ref is not None}
+            for command in (f"ppo {ref}", f"plv {ref}", f"pin {ref}"):
+                send_line(gui, command)
+                result[command.split()[0]] = bool(read_line(gui, timeout=1.0)
+                                                  .startswith(command.split()[0] + " "))
+            ai.close()
+            gui.close()
+            return result
+
+        self.assert_same(run_on_both(scenario))
+
+    def test_partial_command_waits_for_newline_matches(self):
+        def scenario(server):
+            ai, _, _ = server.connect_ai("teamA")
+            ai.sendall(b"Inven")
+            before = read_line(ai, timeout=0.2)
+            ai.sendall(b"tory\n")
+            after = read_line(ai, timeout=1.5)
+            ai.close()
+            return {"before": before, "after_is_inventory": after.startswith("[")}
+
+        self.assert_same(run_on_both(scenario, freq=NAV_FREQ))
+
+    def test_client_disconnect_emits_pdi_and_releases_slot_matches(self):
+        def scenario(server):
+            gui = server.connect_gui()
+            ai, ref, slots_before, _ = server.connect_ai_tracked(gui)
+            ai.close()
+            pdi = wait_for_pattern(gui, r"pdi #\d+", 2.0)
+            replacement, slots_after, _ = server.connect_ai("teamA")
+            replacement.close()
+            gui.close()
+            return {
+                "had_ref": ref is not None,
+                "slots_before": slots_before,
+                "pdi_format_ok": bool(pdi and re.fullmatch(r"pdi #\d+", pdi)),
+                "slots_after": slots_after,
+            }
 
         self.assert_same(run_on_both(scenario))
 

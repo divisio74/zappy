@@ -207,7 +207,7 @@ void AiHandler::parseCommand(size_t playerId, std::vector<std::string> &commands
             command == "Fork"       ||
             command == "Eject"      ||
             command == "Incantation"||
-            command.rfind("Broadcast ", 0) == 0 ||
+            (command.rfind("Broadcast ", 0) == 0 && command.size() > 10) ||
             command.rfind("Take ", 0) == 0 ||
             command.rfind("Set ", 0) == 0)
         {
@@ -329,10 +329,8 @@ int AiHandler::countPlayersAtLevel(const Vector2 &coord, int level) const
 
 void AiHandler::enqueueCommand(Player &player, const std::string &command)
 {
-    if (player.getPlayerAction().size() >= 10) {
-        addMessage(player.getId(), "ko");
+    if (player.getPlayerAction().size() >= 10)
         return;
-    }
 
     int cost = 0;
     for (const auto& [key, val] : ACTION_COSTS) {

@@ -134,11 +134,8 @@ void Core::processGuiClientCommand(std::size_t socketId,
     std::vector<std::string> responses = _guiHandler.handleCommand(command);
 
     if (getCommandName(command) == "sst" && responses.size() == 1
-        && getCommandName(responses[0]) == "sst") {
+        && getCommandName(responses[0]) == "sgt") {
         updateTickDuration();
-        queueGuiEvent({.type = GuiEventType::TimeUnitModification,
-            .timeUnit = _worldData.freq});
-        return;
     }
     for (const std::string &response : responses)
         _socketRegistry.write(socketId, response);
@@ -155,8 +152,6 @@ void Core::cleanupDisconnectedClient(std::size_t socketId)
             if (player != _worldData.players.end()) {
                 auto team = _worldData.teams.find(player->second.getTeamId());
 
-                if (team != _worldData.teams.end() && team->second.getUsedSlot() > 0)
-                    team->second.setUsedSlot(team->second.getUsedSlot() - 1);
                 queueGuiEvent({.type = GuiEventType::PlayerDeath,
                     .playerId = playerId.value()});
                 _worldData.players.erase(player);
@@ -369,7 +364,7 @@ void Core::updateTickDuration()
 {
     if (_worldData.freq <= 0)
         return;
-    _tickDuration = std::chrono::milliseconds(1000 / _worldData.freq);
+    _tickDuration = std::chrono::milliseconds(std::max(1, 1000 / _worldData.freq));
 }
 
 std::optional<std::size_t> Core::findTeamByName(const std::string &teamName) const
