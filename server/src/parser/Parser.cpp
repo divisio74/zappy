@@ -7,6 +7,8 @@ namespace {
 const char *USAGE = "USAGE: ./zappy_server -p port -x width -y height -n name1 ... -c clientsNb -f freq";
 const int REQUIRED_ARG_COUNT = 6;
 const int MAX_FREQ = 1000;
+const std::size_t MIN_WORLD_SIZE = 10;
+const std::size_t MAX_WORLD_SIZE = 42;
 
 bool isArgExist(int index, int argc)
 {
@@ -69,6 +71,21 @@ void parseArgument(const std::string &arg, int argc, char **argv, int &index,
         throw std::invalid_argument(USAGE);
     }
 }
+
+void validateTeamNames(const std::vector<std::string> &teamNames)
+{
+    for (const std::string &teamName : teamNames) {
+        if (teamName == "GRAPHIC")
+            throw std::invalid_argument(USAGE);
+    }
+}
+
+void validateWorldSize(std::size_t width, std::size_t height)
+{
+    if (width < MIN_WORLD_SIZE || width > MAX_WORLD_SIZE
+        || height < MIN_WORLD_SIZE || height > MAX_WORLD_SIZE)
+        throw std::invalid_argument(USAGE);
+}
 }
 
 ServerConfig Parser::parse(int argc, char **argv) const
@@ -82,5 +99,7 @@ ServerConfig Parser::parse(int argc, char **argv) const
     }
     if (argCount != REQUIRED_ARG_COUNT)
         throw std::invalid_argument(USAGE);
+    validateWorldSize(config.width, config.height);
+    validateTeamNames(config.teamNames);
     return config;
 }

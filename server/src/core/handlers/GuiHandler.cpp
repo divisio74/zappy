@@ -6,8 +6,6 @@
 namespace {
 const std::string UNKNOWN_COMMAND_RESPONSE = "suc";
 const std::string BAD_PARAMETER_RESPONSE = "sbp";
-constexpr int MAX_FREQUENCY = 1000;
-
 enum class GuiCommand {
     MapSize,
     TileContent,
@@ -336,7 +334,7 @@ std::string GuiHandler::formatTimeUnit() const
 
 std::string GuiHandler::formatTimeUnitModification(int timeUnit) const
 {
-    return "sst " + std::to_string(timeUnit);
+    return "sgt " + std::to_string(timeUnit);
 }
 
 std::string GuiHandler::formatEndGame(const std::string &teamName) const
@@ -426,10 +424,10 @@ std::string GuiHandler::handleTimeUnitModification(
     int frequency = 0;
 
     if (args.size() != 2 || !parsePositiveNumber(args[1], frequency)
-        || frequency <= 0 || frequency > MAX_FREQUENCY)
+        || frequency <= 0)
         return BAD_PARAMETER_RESPONSE;
     _worldData.freq = frequency;
-    return "sst " + std::to_string(_worldData.freq);
+    return formatTimeUnitModification(_worldData.freq);
 }
 
 bool GuiHandler::isPositionValid(int x, int y) const
