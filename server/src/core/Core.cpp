@@ -257,22 +257,6 @@ void Core::sendGuiMessages()
 void Core::sendGuiInitialState(std::size_t socketId)
 {
     _socketRegistry.write(socketId, _guiHandler.formatMapSize());
-    for (const std::string &message : _guiHandler.formatMapContent())
-        _socketRegistry.write(socketId, message);
-    for (const std::string &message : _guiHandler.formatTeamNames())
-        _socketRegistry.write(socketId, message);
-    for (const auto &[id, player] : _worldData.players) {
-        static_cast<void>(id);
-        _socketRegistry.write(socketId, _guiHandler.formatPlayerConnection(player));
-        _socketRegistry.write(socketId, _guiHandler.formatPlayerLevel(player.getId()));
-        _socketRegistry.write(socketId, _guiHandler.formatPlayerInventory(player.getId()));
-    }
-    for (const Egg &egg : _worldData.eggs) {
-        const Vector2 &position = egg.getCoordinate();
-
-        _socketRegistry.write(socketId,
-            _guiHandler.formatEggLaid(egg.getId(), 0, position.x, position.y));
-    }
     _socketRegistry.write(socketId, _guiHandler.formatTimeUnit());
 }
 

@@ -6,8 +6,8 @@
 namespace {
 const char *USAGE = "USAGE: ./zappy_server -p port -x width -y height -n name1 ... -c clientsNb -f freq";
 const int MAX_FREQ = 1000;
-const std::size_t MIN_WORLD_SIZE = 10;
-const std::size_t MAX_WORLD_SIZE = 42;
+const std::size_t MIN_MAP_SIZE = 10;
+const std::size_t MAX_MAP_SIZE = 42;
 
 bool isArgExist(int index, int argc)
 {
@@ -139,8 +139,7 @@ ServerConfig Parser::parse(int argc, char **argv) const
         std::string arg(argv[i]);
         parseArgument(arg, argc, argv, i, config);
     }
-    validateWorldSize(config.width, config.height);
-    validateTeamNames(config.teamNames);
-    validateClientsNumber(config.clientsNb);
+    if (argCount != REQUIRED_ARG_COUNT)
+        throw std::invalid_argument(USAGE);
     return config;
 }
