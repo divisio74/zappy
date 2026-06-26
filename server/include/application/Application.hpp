@@ -6,9 +6,8 @@
 class Application {
 public:
     Application() = default;
-    int run();
+    int run(int argc, char **argv);
 
 private:
     Parser _parser;
-    Core _core;
 };

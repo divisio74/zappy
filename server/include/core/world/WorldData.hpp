@@ -12,7 +12,8 @@
 #include "core/world/Tile.hpp"
 
 struct WorldData {
-    double freq;
+    int freq = 0;
+    std::size_t nextEggId = 1;
     std::vector<std::vector<Tile>> map;
     std::unordered_map<std::size_t, Player> players;
     std::vector<std::shared_ptr<Ressource>> ressources;

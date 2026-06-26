@@ -1,9 +1,10 @@
 #include "application/Application.hpp"
 
-int Application::run()
+int Application::run(int argc, char **argv)
 {
-    static_cast<void>(_parser);
-    static_cast<void>(_core);
+    ServerConfig config = _parser.parse(argc, argv);
+    Core core(config);
 
+    core.runServer();
     return 0;
 }

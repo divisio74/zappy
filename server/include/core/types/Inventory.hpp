@@ -3,7 +3,7 @@
 #include <string>
 
 struct Inventory {
-    int food = 0;
+    int food = 10;
     int linemate = 0;
     int deraumere = 0;
     int sibur = 0;

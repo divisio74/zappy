@@ -42,7 +42,7 @@ void WorldHandling::createMap(std::size_t width, std::size_t height,
 void WorldHandling::createTeams(const std::vector<std::string> &teamNames, std::size_t places)
 {
     for (std::size_t id = 0; id < teamNames.size(); id++) {
-        Team team(id, teamNames[id], places);
+        Team team(teamNames[id], places);
 
         _data.teams[id] = team;
         createEggs(id, places);
@@ -67,14 +67,18 @@ void WorldHandling::initRessourcesQt()
 
 void WorldHandling::spawnRessources()
 {
-    _data.ressources.clear();
     for (const auto &[type, density] : RESSOURCES_QT) {
         static_cast<void>(density);
         int quantity = _data.ressourcesQt[type];
+        int currentQuantity = 0;
 
-        for (int i = 0; i < quantity; i++) {
+        for (const auto &resource : _data.ressources) {
+            if (resource->getType() == type)
+                currentQuantity++;
+        }
+        for (int i = currentQuantity; i < quantity; i++) {
             Vector2 position = getRandomPosition();
-            auto ressource = std::make_shared<Ressource>(position, type, _data.ressources.size());
+            auto ressource = std::make_shared<Ressource>(type, _data.ressources.size());
 
             _data.ressources.push_back(ressource);
             if (position.y >= 0 && static_cast<std::size_t>(position.y) < _data.map.size()
@@ -88,20 +92,8 @@ void WorldHandling::createEggs(std::size_t teamId, std::size_t places)
 {
     for (std::size_t i = 0; i < places; i++) {
         Vector2 position = getRandomPosition();
-        Egg egg(position, teamId);
+        Egg egg(position, teamId, _data.nextEggId++);
 
         _data.eggs.push_back(egg);
-        if (position.y >= 0 && static_cast<std::size_t>(position.y) < _data.map.size()
-            && position.x >= 0 && static_cast<std::size_t>(position.x) < _data.map[position.y].size())
-            _data.eggs.push_back(egg);
     }
-}
-
-const std::vector<std::vector<Tile>> &WorldHandling::getMap() const
-{
-    return _data.map;
-}
-
-void WorldHandling::move()
-{
 }

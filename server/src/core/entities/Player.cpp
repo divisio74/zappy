@@ -48,26 +48,6 @@ void Player::setDirection(Direction direction)
     _direction = direction;
 }
 
-std::chrono::steady_clock::time_point Player::getWaitTime() const
-{
-    return _waitTime;
-}
-
-void Player::setWaitTime(std::chrono::steady_clock::time_point newTime)
-{
-    _waitTime = newTime;
-}
-
-bool Player::isAlive() const
-{
-    return _alive;
-}
-
-void Player::setAlive(bool alive)
-{
-    _alive = alive;
-}
-
 int Player::getLevel() const
 {
     return _level;
@@ -78,24 +58,9 @@ void Player::setLevel(int newLevel)
     _level = newLevel;
 }
 
-bool Player::isFrozen() const
-{
-    return _isFrozen;
-}
-
-void Player::setFrozen(bool frozen)
-{
-    _isFrozen = frozen;
-}
-
 std::queue<playerAction> &Player::getPlayerAction()
 {
     return _actionQueue;
-}
-
-void Player::addPlayerAction(playerAction action)
-{
-    _actionQueue.push(action);
 }
 
 std::size_t Player::getId() const

@@ -1,9 +1,12 @@
 #pragma once
 
+#include <functional>
 #include <queue>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
+#include "core/handlers/GuiEvent.hpp"
 #include "core/world/WorldData.hpp"
 
 struct message {
@@ -13,11 +16,13 @@ struct message {
 
 class AiHandler {
 public:
-    AiHandler(WorldData& world) : _world(world) {};
+    AiHandler(WorldData& world, std::function<void(const GuiEvent&)> queueGuiEvent);
     ~AiHandler() = default;
 
     void parseCommand(size_t playerId, std::vector<std::string>& commands);
     void run();
+    std::vector<message> getMessages();
+    void addMessage(size_t id, std::string message);
 
 private:
     void enqueueCommand(Player& player, const std::string& command);
@@ -28,7 +33,7 @@ private:
     bool canIncantation(const Player& player) const;
     int countPlayersAtLevel(const Vector2 &coord, int level) const;
 
-    void addMessage(size_t id, std::string message);
+    void queueGuiEvent(const GuiEvent &event);
 
     void execForward(Player& player);
     void execRight(Player& player);
@@ -44,6 +49,7 @@ private:
     void execSet(Player& player, const std::string& object);
 
     WorldData&  _world;
+    std::function<void(const GuiEvent&)> _queueGuiEvent;
     std::queue<message> _messageQueue;
 
     static const std::unordered_map<std::string, int> ACTION_COSTS;

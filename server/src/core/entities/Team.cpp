@@ -1,25 +1,9 @@
 #include "core/entities/Team.hpp"
 
-Team::Team(std::size_t id)
-    : _id(id)
-{
-}
-
-Team::Team(std::size_t id, const std::string &name, std::size_t maxSlot)
+Team::Team(const std::string &name, std::size_t maxSlot)
     : _name(name),
-      _maxSlot(maxSlot),
-      _id(id)
+      _maxSlot(maxSlot)
 {
-}
-
-std::vector<std::shared_ptr<Player>> &Team::getPlayers()
-{
-    return _players;
-}
-
-const std::vector<std::shared_ptr<Player>> &Team::getPlayers() const
-{
-    return _players;
 }
 
 std::size_t Team::getMaxSlot() const
@@ -40,11 +24,6 @@ std::size_t Team::getUsedSlot() const
 void Team::setUsedSlot(std::size_t usedSlot)
 {
     _usedSlot = usedSlot;
-}
-
-std::size_t Team::getId() const
-{
-    return _id;
 }
 
 const std::string &Team::getName() const
