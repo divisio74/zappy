@@ -336,7 +336,7 @@ std::string GuiHandler::formatTimeUnit() const
 
 std::string GuiHandler::formatTimeUnitModification(int timeUnit) const
 {
-    return "sst " + std::to_string(timeUnit);
+    return "sgt " + std::to_string(timeUnit);
 }
 
 std::string GuiHandler::formatEndGame(const std::string &teamName) const
@@ -426,7 +426,7 @@ std::string GuiHandler::handleTimeUnitModification(
     int frequency = 0;
 
     if (args.size() != 2 || !parsePositiveNumber(args[1], frequency)
-        || frequency <= 0 || frequency > MAX_FREQUENCY)
+        || frequency <= 0)
         return BAD_PARAMETER_RESPONSE;
     _worldData.freq = frequency;
     return "sst " + std::to_string(_worldData.freq);

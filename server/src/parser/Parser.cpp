@@ -7,6 +7,8 @@ namespace {
 const char *USAGE = "USAGE: ./zappy_server -p port -x width -y height -n name1 ... -c clientsNb -f freq";
 const int REQUIRED_ARG_COUNT = 6;
 const int MAX_FREQ = 1000;
+const std::size_t MIN_MAP_SIZE = 10;
+const std::size_t MAX_MAP_SIZE = 42;
 
 bool isArgExist(int index, int argc)
 {
@@ -82,5 +84,8 @@ ServerConfig Parser::parse(int argc, char **argv) const
     }
     if (argCount != REQUIRED_ARG_COUNT)
         throw std::invalid_argument(USAGE);
+    if (config.width < MIN_MAP_SIZE || config.width > MAX_MAP_SIZE
+        || config.height < MIN_MAP_SIZE || config.height > MAX_MAP_SIZE)
+        throw std::invalid_argument("Invalid map size: width and height must be between 10 and 42");
     return config;
 }
