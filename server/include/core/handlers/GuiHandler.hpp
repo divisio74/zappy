@@ -6,7 +6,6 @@
 
 #include "core/entities/Player.hpp"
 #include "core/types/ResourceType.hpp"
-#include "core/world/Tile.hpp"
 #include "core/world/WorldData.hpp"
 
 class GuiHandler {
@@ -14,7 +13,6 @@ public:
     explicit GuiHandler(WorldData &worldData);
 
     std::vector<std::string> handleCommand(const std::string &command);
-    const std::vector<std::vector<Tile>> &getMap() const;
 
     std::string formatMapSize() const;
     std::string formatTileContent(int x, int y) const;

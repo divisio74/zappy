@@ -22,6 +22,7 @@ public:
     void parseCommand(size_t playerId, std::vector<std::string>& commands);
     void run();
     std::vector<message> getMessages();
+    void addMessage(size_t id, std::string message);
 
 private:
     void enqueueCommand(Player& player, const std::string& command);
@@ -32,7 +33,6 @@ private:
     bool canIncantation(const Player& player) const;
     int countPlayersAtLevel(const Vector2 &coord, int level) const;
 
-    void addMessage(size_t id, std::string message);
     void queueGuiEvent(const GuiEvent &event);
 
     void execForward(Player& player);

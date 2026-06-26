@@ -23,14 +23,6 @@ public:
     void processServerTick();
     void queueGuiEvent(const GuiEvent &event);
 
-    WorldData &getWorldData();
-    const WorldData &getWorldData() const;
-    SocketRegistry &getSocketRegistry();
-    const SocketRegistry &getSocketRegistry() const;
-    GuiHandler &getGuiHandler();
-    AiHandler &getAiHandler();
-    WorldHandling &getWorldHandling();
-
 private:
     void processClientCommands(std::size_t socketId);
     void greetNewClient(std::size_t socketId);
@@ -41,6 +33,8 @@ private:
         const std::string &command);
     void cleanupDisconnectedClient(std::size_t socketId);
     void processTimedWorldEvents();
+    void processFoodConsumption();
+    void killPlayer(std::size_t playerId);
     void processAiActions();
     void sendAiMessages();
     void sendGuiMessages();
@@ -62,5 +56,6 @@ private:
     std::chrono::milliseconds _tickDuration;
     std::chrono::steady_clock::time_point _lastTickTime;
     int _resourceSpawnTicks;
+    int _foodConsumptionTicks;
     std::size_t _nextPlayerId;
 };

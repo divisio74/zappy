@@ -10,7 +10,8 @@
 #include <vector>
 
 namespace {
-constexpr int RESOURCE_SPAWN_INTERVAL = 20;
+constexpr int RESOURCE_SPAWN_INTERVAL = 2000;
+constexpr int FOOD_CONSUMPTION_INTERVAL = 126;
 
 std::string getCommandName(const std::string &command)
 {
@@ -24,7 +25,7 @@ std::string getCommandName(const std::string &command)
 
 Core::Core(const ServerConfig &config)
     : _worldHandling(_worldData),
-      _socketRegistry("0.0.0.0", config.port, config.clientsNb),
+      _socketRegistry("0.0.0.0", config.port, SocketRegistry::MaxSockets),
       _guiHandler(_worldData),
       _aiHandler(_worldData, [this](const GuiEvent &event) {
           queueGuiEvent(event);
@@ -33,6 +34,7 @@ Core::Core(const ServerConfig &config)
       _tickDuration(std::chrono::milliseconds(1000 / config.freq)),
       _lastTickTime(std::chrono::steady_clock::now()),
       _resourceSpawnTicks(0),
+      _foodConsumptionTicks(0),
       _nextPlayerId(1)
 {
     _worldData.freq = static_cast<int>(config.freq);
@@ -171,12 +173,50 @@ void Core::processTimedWorldEvents()
     while (now - _lastTickTime >= _tickDuration) {
         _lastTickTime += _tickDuration;
         _resourceSpawnTicks++;
+        _foodConsumptionTicks++;
+        if (_foodConsumptionTicks >= FOOD_CONSUMPTION_INTERVAL) {
+            processFoodConsumption();
+            _foodConsumptionTicks = 0;
+        }
         if (_resourceSpawnTicks >= RESOURCE_SPAWN_INTERVAL) {
             _worldHandling.spawnRessources();
-            queueGuiEvent({.type = GuiEventType::MapContent});
             _resourceSpawnTicks = 0;
         }
     }
+}
+
+void Core::processFoodConsumption()
+{
+    std::vector<std::size_t> deadPlayers;
+
+    for (auto &[id, player] : _worldData.players) {
+        Inventory &inventory = player.getInventory();
+
+        if (inventory.food > 0)
+            inventory.food--;
+        if (inventory.food <= 0)
+            deadPlayers.push_back(id);
+    }
+    for (std::size_t playerId : deadPlayers)
+        killPlayer(playerId);
+}
+
+void Core::killPlayer(std::size_t playerId)
+{
+    auto player = _worldData.players.find(playerId);
+
+    if (player == _worldData.players.end())
+        return;
+    _aiHandler.addMessage(playerId, "dead");
+    sendAiMessages();
+
+    auto team = _worldData.teams.find(player->second.getTeamId());
+
+    if (team != _worldData.teams.end() && team->second.getUsedSlot() > 0)
+        team->second.setUsedSlot(team->second.getUsedSlot() - 1);
+    queueGuiEvent({.type = GuiEventType::PlayerDeath,
+        .playerId = playerId});
+    _worldData.players.erase(player);
 }
 
 void Core::processAiActions()
@@ -389,39 +429,4 @@ int Core::getPollTimeoutMs() const
     if (elapsed >= _tickDuration)
         return 0;
     return static_cast<int>((_tickDuration - elapsed).count());
-}
-
-WorldData &Core::getWorldData()
-{
-    return _worldData;
-}
-
-const WorldData &Core::getWorldData() const
-{
-    return _worldData;
-}
-
-SocketRegistry &Core::getSocketRegistry()
-{
-    return _socketRegistry;
-}
-
-const SocketRegistry &Core::getSocketRegistry() const
-{
-    return _socketRegistry;
-}
-
-GuiHandler &Core::getGuiHandler()
-{
-    return _guiHandler;
-}
-
-AiHandler &Core::getAiHandler()
-{
-    return _aiHandler;
-}
-
-WorldHandling &Core::getWorldHandling()
-{
-    return _worldHandling;
 }

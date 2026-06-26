@@ -151,11 +151,6 @@ std::vector<std::string> GuiHandler::handleCommand(const std::string &command)
     return {UNKNOWN_COMMAND_RESPONSE};
 }
 
-const std::vector<std::vector<Tile>> &GuiHandler::getMap() const
-{
-    return _worldData.map;
-}
-
 std::string GuiHandler::formatMapSize() const
 {
     std::ostringstream response;

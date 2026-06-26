@@ -219,7 +219,7 @@ void AiHandler::parseCommand(size_t playerId, std::vector<std::string> &commands
                 addMessage(player.getId(), "Elevation underway");
             enqueueCommand(player, command);
         } else {
-            addMessage(playerId, "error");
+            addMessage(playerId, "ko");
         }
     }
 }
@@ -235,7 +235,6 @@ void AiHandler::run()
         if (action.executeAt < now) {
             queue.pop();
             executeCommand(id, action.command);
-            player.setWaitTime(player.getWaitTime() - action.time);
         }
     }
 }
@@ -463,7 +462,15 @@ void AiHandler::execLook(Player &player)
                 firstObj = false;
             }
 
-            for (size_t i = 0; i < tile.getPlayers().size(); ++i) {
+            std::size_t playerCount = 0;
+
+            for (const auto &[id, visiblePlayer] : _world.players) {
+                static_cast<void>(id);
+                if (visiblePlayer.getCoordinate().x == pos.x
+                    && visiblePlayer.getCoordinate().y == pos.y)
+                    playerCount++;
+            }
+            for (std::size_t i = 0; i < playerCount; ++i) {
                 if (!firstObj)
                     response << " ";
 
@@ -473,7 +480,7 @@ void AiHandler::execLook(Player &player)
         }
     }
 
-    response << "]\n";
+    response << "]";
     addMessage(player.getId(), response.str());
 }
 
@@ -528,8 +535,6 @@ void AiHandler::execEject(Player &ejector)
 
     bool ejected = false;
     const Vector2 ejectorPos = ejector.getCoordinate();
-    const int pushDirection = static_cast<int>(ejector.getDirection());
-    const int sourceDirection = (pushDirection + 2) % 4;
 
     for (auto &[id, player] : _world.players) {
         if (id == ejector.getId())
@@ -537,12 +542,11 @@ void AiHandler::execEject(Player &ejector)
         if (player.getCoordinate().x != ejectorPos.x
             || player.getCoordinate().y != ejectorPos.y)
             continue;
-        const int playerDirection = static_cast<int>(player.getDirection());
-        const int relativeDirection = (playerDirection - sourceDirection + 4) % 4;
-        const std::string ejectMessage = "eject: "
-            + std::to_string(relativeDirection * 2 + 1);
-
         player.setCoordinate(targetPos);
+        Player source(ejectorPos, Direction::North, 0, 0);
+        const std::string ejectMessage = "eject: "
+            + std::to_string(getBroadcastDirection(player, source, _world.size));
+
         addMessage(player.getId(), ejectMessage);
         ejected = true;
     }
@@ -558,21 +562,39 @@ void AiHandler::execEject(Player &ejector)
         ejected = true;
     }
 
-    addMessage(ejector.getId(), ejected ? "ok" : "ko");
+    queueGuiEvent({.type = GuiEventType::Expulsion,
+        .playerId = ejector.getId()});
+    addMessage(ejector.getId(), "ok");
 }
 
 void AiHandler::execIncantation(Player &player)
 {
+    const Vector2 coord = player.getCoordinate();
 
     if (!canIncantation(player)) {
         addMessage(player.getId(), "ko");
+        queueGuiEvent({.type = GuiEventType::IncantationEnd,
+            .x = coord.x,
+            .y = coord.y,
+            .result = 0});
         return;
     }
     const int currentLevel = player.getLevel();
     auto &cost = evolutionCosts.at(currentLevel);
-    const Vector2 coord = player.getCoordinate();
     auto &tileResources = _world.map[coord.y][coord.x].getRessources();
+    std::vector<std::size_t> playerIds;
 
+    for (auto &[id, target] : _world.players) {
+        if (target.getCoordinate().x == coord.x
+            && target.getCoordinate().y == coord.y
+            && target.getLevel() == currentLevel)
+            playerIds.push_back(id);
+    }
+    queueGuiEvent({.type = GuiEventType::IncantationStart,
+        .x = coord.x,
+        .y = coord.y,
+        .level = currentLevel,
+        .playerIds = playerIds});
     consumeResources(tileResources, _world.ressources, ResourceType::Linemate, cost.linemate);
     consumeResources(tileResources, _world.ressources, ResourceType::Deraumere, cost.deraumere);
     consumeResources(tileResources, _world.ressources, ResourceType::Sibur, cost.sibur);
@@ -588,7 +610,16 @@ void AiHandler::execIncantation(Player &player)
             continue;
         target.setLevel(newLevel);
         addMessage(target.getId(), "Current level: " + std::to_string(newLevel));
+        queueGuiEvent({.type = GuiEventType::PlayerLevel,
+            .playerId = target.getId()});
     }
+    queueGuiEvent({.type = GuiEventType::IncantationEnd,
+        .x = coord.x,
+        .y = coord.y,
+        .result = 1});
+    queueGuiEvent({.type = GuiEventType::TileContent,
+        .x = coord.x,
+        .y = coord.y});
 }
 
 void AiHandler::execBroadcast(Player &player, const std::string &text)
@@ -637,6 +668,14 @@ void AiHandler::execTake(Player &player, const std::string &object)
             return resource->getId() == resourceId;
         }), resources.end());
 
+    queueGuiEvent({.type = GuiEventType::ResourceCollect,
+        .playerId = player.getId(),
+        .resource = type});
+    queueGuiEvent({.type = GuiEventType::PlayerInventory,
+        .playerId = player.getId()});
+    queueGuiEvent({.type = GuiEventType::TileContent,
+        .x = pos.x,
+        .y = pos.y});
     addMessage(player.getId(), "ok");
 }
 
@@ -651,9 +690,17 @@ void AiHandler::execSet(Player &player, const std::string &object)
     }
 
     const Vector2 pos = player.getCoordinate();
-    auto resource = std::make_shared<Ressource>(pos, type, getNextResourceId(_world.ressources));
+    auto resource = std::make_shared<Ressource>(type, getNextResourceId(_world.ressources));
 
     _world.ressources.push_back(resource);
     _world.map[pos.y][pos.x].getRessources().push_back(resource);
+    queueGuiEvent({.type = GuiEventType::ResourceDrop,
+        .playerId = player.getId(),
+        .resource = type});
+    queueGuiEvent({.type = GuiEventType::PlayerInventory,
+        .playerId = player.getId()});
+    queueGuiEvent({.type = GuiEventType::TileContent,
+        .x = pos.x,
+        .y = pos.y});
     addMessage(player.getId(), "ok");
 }

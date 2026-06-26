@@ -12,9 +12,7 @@ public:
 
     void createMap(std::size_t width, std::size_t height,
         const std::vector<std::string> &teamNames, std::size_t places);
-    const std::vector<std::vector<Tile>> &getMap() const;
     void spawnRessources();
-    void move();
 
 private:
     void createTeams(const std::vector<std::string> &teamNames, std::size_t places);

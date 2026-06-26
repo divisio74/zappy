@@ -10,9 +10,7 @@ public:
     Egg(Vector2 coordinate, std::size_t teamId, std::size_t id);
 
     const Vector2 &getCoordinate() const;
-    void setCoordinate(Vector2 coordinate);
     std::size_t getTeamId() const;
-    void setTeamId(std::size_t teamId);
     std::size_t getId() const;
 
 private:

@@ -12,7 +12,7 @@ all:
 tests_run:
 	cmake -S server -B build/server-tests
 	cmake --build build/server-tests -j
-	python3 -m unittest -v tests/test_zappy_protocol.py
+	ZAPPY_SERVER_BIN=$(PWD)/server/zappy_server python3 -m unittest -v tests/test_zappy_protocol.py
 
 compare_tests: all
 	chmod +x ./zappy_server_official ./zappy_gui.AppImage
