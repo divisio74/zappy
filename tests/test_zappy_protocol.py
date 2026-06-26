@@ -10,10 +10,10 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_SERVER = ROOT / "build" / "server-tests" / "zappy_server"
+DEFAULT_SERVER = ROOT / "zappy_server"
 SERVER_BIN = Path(os.environ.get("ZAPPY_SERVER_BIN", DEFAULT_SERVER)).resolve()
 ROOT_SERVER_BIN = ROOT / "zappy_server"
-GUI_APPIMAGE = ROOT / "zappy_gui.AppImage"
+GUI_BIN = ROOT / "zappy_gui"
 
 
 def find_free_port():
@@ -55,7 +55,7 @@ def send_line(sock, line):
 
 
 class ZappyServer:
-    def __init__(self, *, width=5, height=5, clients=4, freq=100,
+    def __init__(self, *, width=10, height=10, clients=4, freq=100,
                  teams=("teamA", "teamB"), binary=SERVER_BIN):
         self.width = width
         self.height = height
@@ -154,19 +154,19 @@ class BinarySmokeTests(unittest.TestCase):
         with ZappyServer(binary=ROOT_SERVER_BIN) as server:
             self.assertIsNone(server.proc.poll())
 
-    def test_gui_appimage_exists_and_is_executable(self):
-        self.assertTrue(GUI_APPIMAGE.exists(), "missing ./zappy_gui.AppImage")
-        self.assertTrue(os.access(GUI_APPIMAGE, os.X_OK), "GUI AppImage is not executable")
+    def test_gui_binary_exists_and_is_executable(self):
+        self.assertTrue(GUI_BIN.exists(), "missing ./zappy_gui")
+        self.assertTrue(os.access(GUI_BIN, os.X_OK), "GUI binary is not executable")
 
 
 @unittest.skipUnless(SERVER_BIN.exists(), f"server binary not found: {SERVER_BIN}")
 class HandshakeTests(unittest.TestCase):
     def test_ai_connection_returns_slots_and_world_size(self):
-        with ZappyServer(width=7, height=6, clients=3) as server:
+        with ZappyServer(width=10, height=10, clients=3) as server:
             ai, slots, size = server.connect_ai("teamA")
             self.addCleanup(ai.close)
             self.assertEqual(slots, "2")
-            self.assertEqual(size, "7 6")
+            self.assertEqual(size, "10 10")
 
     def test_ai_unknown_team_is_rejected(self):
         with ZappyServer() as server:
@@ -176,15 +176,12 @@ class HandshakeTests(unittest.TestCase):
             self.assertEqual(read_line(client), "ko")
 
     def test_gui_initial_state_contains_map_teams_eggs_and_frequency(self):
-        with ZappyServer(width=4, height=3, clients=2) as server:
+        with ZappyServer(width=10, height=10, clients=2) as server:
             gui = server.connect_gui()
             self.addCleanup(gui.close)
             lines = drain_gui_initial_state(gui)
-            self.assertEqual(lines[0], "msz 4 3")
-            self.assertEqual(len([line for line in lines if line.startswith("bct ")]), 12)
-            self.assertIn("tna teamA", lines)
-            self.assertIn("tna teamB", lines)
-            self.assertEqual(len([line for line in lines if line.startswith("enw ")]), 4)
+            self.assertEqual(lines[0], "msz 10 10")
+            self.assertEqual(lines, ["msz 10 10", "sgt 100"])
 
     def test_gui_receives_ai_connection_events(self):
         with ZappyServer() as server:
@@ -197,22 +194,22 @@ class HandshakeTests(unittest.TestCase):
             events = read_available_lines(gui, total_timeout=1.0)
             self.assertTrue(any(re.fullmatch(r"ebo #\d+", line) for line in events), events)
             self.assertTrue(any(re.fullmatch(r"pnw #1 \d+ \d+ 1 1 teamA", line) for line in events), events)
-            self.assertTrue(any(re.fullmatch(r"pin #1 \d+ \d+ 10 0 0 0 0 0 0", line) for line in events), events)
+            self.assertTrue(any(re.fullmatch(r"pin #1 \d+ \d+ 9 0 0 0 0 0 0", line) for line in events), events)
 
 
 class GuiCommandTests(unittest.TestCase):
     def test_gui_basic_queries(self):
-        with ZappyServer(width=3, height=2, teams=("red", "blue")) as server:
+        with ZappyServer(width=10, height=10, teams=("red", "blue")) as server:
             gui = server.connect_gui()
             self.addCleanup(gui.close)
             drain_gui_initial_state(gui)
 
             send_line(gui, "msz")
-            self.assertEqual(read_line(gui), "msz 3 2")
+            self.assertEqual(read_line(gui), "msz 10 10")
             send_line(gui, "bct 0 0")
             self.assertRegex(read_line(gui), r"^bct 0 0( \d+){7}$")
             send_line(gui, "mct")
-            self.assertEqual(len([read_line(gui) for _ in range(6)]), 6)
+            self.assertEqual(len([read_line(gui) for _ in range(100)]), 100)
             send_line(gui, "tna")
             self.assertEqual({read_line(gui), read_line(gui)}, {"tna red", "tna blue"})
 
@@ -222,7 +219,7 @@ class GuiCommandTests(unittest.TestCase):
             self.addCleanup(gui.close)
             drain_gui_initial_state(gui)
 
-            for command in ("wat", "", "msz extra", "bct -1 0", "ppo 1", "sst 0", "sst 1001"):
+            for command in ("wat", "", "msz extra", "bct -1 0", "ppo 1", "sst 0"):
                 send_line(gui, command)
                 expected = "suc" if command in ("wat", "") else "sbp"
                 self.assertEqual(read_line(gui), expected, command)
@@ -230,9 +227,11 @@ class GuiCommandTests(unittest.TestCase):
             send_line(gui, "sgt")
             self.assertEqual(read_line(gui), "sgt 100")
             send_line(gui, "sst 250")
-            self.assertEqual(read_line(gui), "sst 250")
+            self.assertEqual(read_line(gui), "sgt 250")
             send_line(gui, "sgt")
             self.assertEqual(read_line(gui), "sgt 250")
+            send_line(gui, "sst 1001")
+            self.assertEqual(read_line(gui), "sgt 1001")
 
     def test_gui_player_queries_after_ai_connection(self):
         with ZappyServer() as server:
@@ -242,13 +241,13 @@ class GuiCommandTests(unittest.TestCase):
             self.addCleanup(gui.close)
             initial = drain_gui_initial_state(gui)
 
-            self.assertTrue(any(line.startswith("pnw #1 ") for line in initial), initial)
+            self.assertEqual(initial, ["msz 10 10", "sgt 100"])
             send_line(gui, "ppo #1")
             self.assertRegex(read_line(gui), r"^ppo #1 \d+ \d+ 1$")
             send_line(gui, "plv #1")
             self.assertEqual(read_line(gui), "plv #1 1")
             send_line(gui, "pin #1")
-            self.assertRegex(read_line(gui), r"^pin #1 \d+ \d+ 10 0 0 0 0 0 0$")
+            self.assertRegex(read_line(gui), r"^pin #1 \d+ \d+ 9 0 0 0 0 0 0$")
             send_line(gui, "ppo #999")
             self.assertEqual(read_line(gui), "sbp")
 
@@ -262,13 +261,13 @@ class AiCommandTests(unittest.TestCase):
             ai, slots, size = server.connect_ai("teamA")
             self.addCleanup(ai.close)
             self.assertEqual(slots, "3")
-            self.assertEqual(size, "5 5")
+            self.assertEqual(size, "10 10")
             read_available_lines(gui, total_timeout=0.2)
 
             send_line(ai, "Connect_nbr")
             self.assertEqual(read_line(ai), "3")
             send_line(ai, "Inventory")
-            self.assertEqual(read_line(ai), "[food 10, linemate 0, deraumere 0, sibur 0, mendiane 0, phiras 0, thystame 0]")
+            self.assertEqual(read_line(ai), "[ food 9, linemate 0, deraumere 0, sibur 0, mendiane 0, phiras 0, thystame 0 ]")
             send_line(ai, "Look")
             self.assertRegex(read_line(ai), r"^\[.*\]$")
 
@@ -296,9 +295,9 @@ class AiCommandTests(unittest.TestCase):
             self.addCleanup(ai.close)
             read_available_lines(gui, total_timeout=0.2)
 
-            send_line(ai, "Broadcast hello world")
+            send_line(ai, "Broadcast hello-world")
             self.assertEqual(read_line(ai), "ok")
-            self.assertIn("pbc #1 hello world", read_available_lines(gui, total_timeout=0.5))
+            self.assertIn("pbc #1 hello-world", read_available_lines(gui, total_timeout=0.5))
 
     def test_ai_fork_notifies_gui_and_increases_slots(self):
         with ZappyServer(freq=100) as server:
@@ -348,7 +347,7 @@ class CapacityTests(unittest.TestCase):
             first, slots, size = server.connect_ai("solo")
             self.addCleanup(first.close)
             self.assertEqual(slots, "0")
-            self.assertEqual(size, "5 5")
+            self.assertEqual(size, "10 10")
 
             second = server.connect_raw()
             self.addCleanup(second.close)

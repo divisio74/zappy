@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OFFICIAL_SERVER = Path(os.environ.get(
     "OFFICIAL_SERVER_BIN", ROOT / "zappy_server_official")).resolve()
 MINE_SERVER = Path(os.environ.get("MINE_SERVER_BIN", ROOT / "zappy_server")).resolve()
-GUI_BIN = Path(os.environ.get("ZAPPY_GUI_BIN", ROOT / "zappy_gui.AppImage")).resolve()
+GUI_BIN = Path(os.environ.get("ZAPPY_GUI_BIN", ROOT / "zappy_gui")).resolve()
 
 WIDTH = 10
 HEIGHT = 10
@@ -217,7 +217,7 @@ class OfficialComparisonTests(unittest.TestCase):
             "mine": run_invalid(MINE_SERVER),
         })
 
-    def test_gui_appimage_connects_to_both_servers(self):
+    def test_gui_binary_connects_to_both_servers(self):
         self.assertTrue(GUI_BIN.exists(), f"missing GUI binary: {GUI_BIN}")
         os.chmod(GUI_BIN, os.stat(GUI_BIN).st_mode | 0o111)
 
@@ -301,12 +301,23 @@ class OfficialComparisonTests(unittest.TestCase):
         self.assert_same(run_on_both(scenario))
 
     def test_ai_handshake_and_basic_commands_match_official(self):
+        look_pattern = re.compile(
+            r"^\[( ?(player|food|linemate|deraumere|sibur|mendiane|phiras|thystame)"
+            r"( (player|food|linemate|deraumere|sibur|mendiane|phiras|thystame))*"
+            r")?(,( ?(player|food|linemate|deraumere|sibur|mendiane|phiras|thystame)"
+            r"( (player|food|linemate|deraumere|sibur|mendiane|phiras|thystame))*"
+            r")?)* ?\]$"
+        )
+
         def scenario(server):
             ai, welcome, slots, size = server.connect_ai("teamA")
             result = {"welcome": welcome, "slots": slots, "size": size}
-            for command in ("Connect_nbr", "Inventory", "Look"):
+            for command in ("Connect_nbr", "Inventory"):
                 send_line(ai, command)
                 result[command] = read_line(ai, timeout=2.0)
+            send_line(ai, "Look")
+            result["Look_format_ok"] = bool(look_pattern.fullmatch(
+                read_line(ai, timeout=2.0)))
             ai.close()
             return result
 

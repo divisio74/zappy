@@ -707,8 +707,7 @@ class OfficialAdvancedComparisonTests(unittest.TestCase):
             return {
                 "ejector_response": ejector,
                 "ejected_format_ok": bool(re.fullmatch(r"eject: \d+", ejected)),
-                "ejected_k_in_range": bool(
-                    re.fullmatch(r"eject: [0-8]", ejected)),
+                "ejected_k_in_range": bool(re.fullmatch(r"eject: [1-8]", ejected)),
                 "gui_has_pex": any(re.fullmatch(r"pex #\d+", e) for e in events),
             }
 

@@ -149,6 +149,20 @@ int getBroadcastDirection(const Player &receiver, const Player &sender, const Ve
     return ((absoluteSector - receiverFrontSector + 8) % 8) + 1;
 }
 
+int getDirectionFromPosition(const Player &receiver, const Vector2 &source,
+    const Vector2 &worldSize)
+{
+    const int dx = getWrappedDelta(receiver.getCoordinate().x, source.x, worldSize.x);
+    const int dy = getWrappedDelta(receiver.getCoordinate().y, source.y, worldSize.y);
+
+    if (dx == 0 && dy == 0)
+        return 0;
+
+    const int absoluteSector = getAbsoluteSector(dx, dy);
+    const int receiverFrontSector = (8 - static_cast<int>(receiver.getDirection()) * 2) % 8;
+    return ((absoluteSector - receiverFrontSector + 8) % 8) + 1;
+}
+
 }
 
 const std::unordered_map<std::string, int> AiHandler::ACTION_COSTS = {
@@ -450,15 +464,6 @@ void AiHandler::execLook(Player &player)
                 response << ",";
 
             first = false;
-            bool firstObj = true;
-
-            for (const auto &resource : tile.getRessources()) {
-                if (!firstObj)
-                    response << " ";
-
-                response << resource->toString();
-                firstObj = false;
-            }
 
             std::size_t playerCount = 0;
 
@@ -468,17 +473,15 @@ void AiHandler::execLook(Player &player)
                     && visiblePlayer.getCoordinate().y == pos.y)
                     playerCount++;
             }
-            for (std::size_t i = 0; i < playerCount; ++i) {
-                if (!firstObj)
-                    response << " ";
+            for (std::size_t i = 0; i < playerCount; ++i)
+                response << " player";
 
-                response << "player";
-                firstObj = false;
-            }
+            for (const auto &resource : tile.getRessources())
+                response << " " << resource->toString();
         }
     }
 
-    response << "]";
+    response << " ]";
     addMessage(player.getId(), response.str());
 }
 
@@ -541,9 +544,9 @@ void AiHandler::execEject(Player &ejector)
             || player.getCoordinate().y != ejectorPos.y)
             continue;
         player.setCoordinate(targetPos);
-        Player source(ejectorPos, Direction::North, 0, 0);
         const std::string ejectMessage = "eject: "
-            + std::to_string(getBroadcastDirection(player, source, _world.size));
+            + std::to_string(getDirectionFromPosition(player, ejectorPos,
+                _world.size));
 
         addMessage(player.getId(), ejectMessage);
         ejected = true;
@@ -622,6 +625,11 @@ void AiHandler::execIncantation(Player &player)
 
 void AiHandler::execBroadcast(Player &player, const std::string &text)
 {
+    if (text.empty() || text.find(' ') != std::string::npos) {
+        addMessage(player.getId(), "ko");
+        return;
+    }
+
     for (auto &[id, receiver] : _world.players) {
         if (id == player.getId())
             continue;
