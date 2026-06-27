@@ -44,6 +44,9 @@ class GameState {
         void lock();
         void unlock();
 
+        void addBroadcast(const std::string &teamName, const std::string &msg);
+        const std::vector<std::pair<std::string, std::string>> &getBroadcasts() const;
+    
         std::vector<int>    _playerToUpt; // si pas bien que ce soit dans GameState alors faire copie player vector dans renderer et comparé (pas opti)
     private:
         int _width;
@@ -56,4 +59,5 @@ class GameState {
         bool _gameOver;
         std::string _winner;
         std::mutex _mutex;
+        std::vector<std::pair<std::string, std::string>> _broadcasts;
 };

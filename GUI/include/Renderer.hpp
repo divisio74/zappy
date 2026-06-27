@@ -27,10 +27,10 @@ class Renderer {
         Renderer();
         ~Renderer() = default;
 
-        const sf::VideoMode&    getVideoMode    () const;
-        const sf::Window&       getWindow       () const;
-        sf::Window&             getWindow       ();
-        Camera&                 getCamera       ();
+        const sf::VideoMode&    getVideoMode() const;
+        const sf::RenderWindow& getWindow() const;
+        sf::RenderWindow&       getWindow();
+        Camera&                 getCamera();
 
         void init();
         void render(GameState& state, float deltaTime);
@@ -48,7 +48,8 @@ class Renderer {
     private:
         sf::VideoMode              _videoMode;
         sf::ContextSettings        _settings;
-        sf::Window                 _window;
+        sf::RenderWindow           _window;
+        sf::Font                   _font;
         Camera                     _camera;
         std::unique_ptr<Shader>    _shader;
         std::unique_ptr<Mesh>      _tileMesh;
@@ -56,4 +57,5 @@ class Renderer {
         std::map<int, std::string> _playerAnimations;
         std::map<int, float>       _playerAnimationTimers;
         std::map<std::string, std::shared_ptr<Model>> _modelsCache;
+        void renderHUD(const GameState &state);
 };

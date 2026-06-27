@@ -58,9 +58,9 @@ Renderer::Renderer()
     _settings.depthBits      = 24;
     _settings.majorVersion   = 3;
     _settings.minorVersion   = 3;
-    _settings.attributeFlags = sf::ContextSettings::Core;
+   // _settings.attributeFlags = sf::ContextSettings::Core;
 
-    _window = sf::Window(_videoMode, "Zappy", sf::State::Windowed, _settings);
+    _window = sf::RenderWindow(_videoMode, "Zappy", sf::State::Windowed, _settings);
     _window.setMouseCursorVisible(false);
     _window.setFramerateLimit(60);
 }
@@ -71,6 +71,8 @@ void Renderer::init()
     glewInit();
     glEnable(GL_DEPTH_TEST);
     srand(time(0));
+
+    _font.openFromFile("fonts/arial.ttf");
 
     _shader = std::make_unique<Shader>("shaders/vertex.glsl", "shaders/fragment.glsl");
     _groundTextures.push_back(TextureLoader::load("ground_1.jpg"));
@@ -122,6 +124,67 @@ void Renderer::render(GameState& state, float deltaTime)
     state._playerToUpt.clear();
 
     renderMap(map);
+    renderHUD(state);
+}
+
+void Renderer::renderHUD(const GameState &state)
+{
+    glDisable(GL_DEPTH_TEST);
+    _window.resetGLStates();
+
+    float W = _window.getSize().x;
+    float H = _window.getSize().y;
+
+    std::map<std::string, int> teamLevel;
+    for (auto &[id, p] : state.getPlayers()) {
+        if (teamLevel[p._teamName] < p._level)
+            teamLevel[p._teamName] = p._level;
+    }
+
+    std::vector<std::pair<std::string, int>> teams(teamLevel.begin(), teamLevel.end());
+    std::sort(teams.begin(), teams.end(), [](const std::pair<std::string, int> &a, const std::pair<std::string, int> &b){
+        return a.second > b.second;
+    });
+    int nbTeams = teams.size();
+    if (nbTeams > 5)
+        nbTeams = 5;
+    float leaderboardHeight = 36.f + nbTeams * 22.f + 10.f;
+
+    sf::RectangleShape leaderboardBg(sf::Vector2f(220.f, leaderboardHeight));
+    leaderboardBg.setPosition({5.f, 5.f});
+    leaderboardBg.setFillColor(sf::Color(15, 15, 38));
+    _window.draw(leaderboardBg);
+
+    sf::Text title(_font, "=== Top equipes ===", 16);
+    title.setFillColor(sf::Color::Yellow);
+    title.setPosition({10.f, 10.f});
+    _window.draw(title);
+
+    for (int i = 0; i < nbTeams; i++) {
+        std::string line = std::to_string(i + 1) + ". " + teams[i].first + " - Lv " + std::to_string(teams[i].second);
+        sf::Text text(_font, line, 14);
+        text.setFillColor(sf::Color::White);
+        text.setPosition({10.f, 36.f + i * 22.f});
+        _window.draw(text);
+    }
+
+    const std::vector<std::pair<std::string, std::string>> &bc = state.getBroadcasts();
+    float broadcastHeight = bc.size() * 22.f + 10.f;
+
+    sf::RectangleShape broadcastBg(sf::Vector2f(410.f, broadcastHeight));
+    broadcastBg.setPosition({W - 410.f, H - 130.f});
+    broadcastBg.setFillColor(sf::Color(15, 15, 38));
+    _window.draw(broadcastBg);
+
+    for (int i = 0; i < bc.size(); i++) {
+        std::string line = "[" + bc[i].first + "] " + bc[i].second;
+        sf::Text text(_font, line, 15);
+        text.setFillColor(sf::Color::White);
+        text.setPosition({W - 400.f, H - 120.f + i * 22.f});
+        _window.draw(text);
+    }
+
+    glEnable(GL_DEPTH_TEST);
 }
 
 void Renderer::renderMap(std::vector<std::vector<Tile>>& map)
@@ -238,12 +301,12 @@ const sf::VideoMode& Renderer::getVideoMode() const
     return _videoMode;
 }
 
-const sf::Window& Renderer::getWindow() const
+const sf::RenderWindow& Renderer::getWindow() const
 {
     return _window;
 }
 
-sf::Window& Renderer::getWindow()
+sf::RenderWindow& Renderer::getWindow()
 {
     return _window;
 }

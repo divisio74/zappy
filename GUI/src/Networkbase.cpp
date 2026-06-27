@@ -11,7 +11,7 @@ NetworkBase::NetworkBase()
 bool NetworkBase::connect(const std::string &host, int port)
 {
     try {
-        _socket = std::make_unique<ClientSocket>(host, (uint16_t)port);
+        _socket = std::make_unique<ClientSocket>(host, port);
     } catch (const std::runtime_error &e) {
         std::cerr << "NetworkBase: connexion échouée : " << e.what() << "\n";
         return false;

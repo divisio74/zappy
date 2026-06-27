@@ -140,3 +140,15 @@ void GameState::unlock()
 {
       _mutex.unlock();
 }
+
+void GameState::addBroadcast(const std::string &teamName, const std::string &msg)
+{
+    if (_broadcasts.size() >= 5)
+        _broadcasts.erase(_broadcasts.begin());
+    _broadcasts.push_back({teamName, msg});
+}
+
+const std::vector<std::pair<std::string, std::string>> &GameState::getBroadcasts() const
+{
+    return _broadcasts;
+}

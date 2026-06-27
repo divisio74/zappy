@@ -180,11 +180,16 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
     else if (cmd == "pbc") {
         std::string idstr;
         std::string message;
-
         words >> idstr;
         std::getline(words, message);
-        std::cout << "[broadcast " << idstr << "]" << message << "\n";
-    }
+
+        int id = std::stoi(idstr.substr(1));
+        Player *player = state.findPlayer(id);
+        std::string teamName = idstr;
+        if (player != nullptr)
+            teamName = player->_teamName;
+        state.addBroadcast(teamName, message);
+}
 
     else if (cmd == "pic") {
         int x = 0;
