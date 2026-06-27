@@ -5,11 +5,27 @@ Gui::Gui()
     _renderer.init();
 }
 
+Gui::~Gui()
+{
+    _state.clear();
+    _renderer.shutdown();
+}
+
 void Gui::run()
 {
     while (const std::optional eventOptional = _renderer.getWindow().pollEvent()) {
-        if (eventOptional->is<sf::Event::Closed>())
-            _renderer.getWindow().close();
+        if (eventOptional->is<sf::Event::Closed>()) {
+            _state.clear();
+            _renderer.shutdown();
+            return;
+        }
+        if (const auto *key = eventOptional->getIf<sf::Event::KeyPressed>()) {
+            if (key->code == sf::Keyboard::Key::Escape) {
+                _state.clear();
+                _renderer.shutdown();
+                return;
+            }
+        }
     }
 
     float deltaTime = _clock.restart().asSeconds();

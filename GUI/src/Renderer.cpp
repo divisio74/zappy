@@ -50,10 +50,15 @@ static std::string getTeamModel(const Player& player, const GameState& state)
     }
 }
 
+static Vertex makeTileVertex(glm::vec3 position, glm::vec2 texCoords)
+{
+    return {position, glm::vec3(0.f), texCoords, glm::ivec4(0), glm::vec4(0.f)};
+}
+
 Renderer::Renderer()
 {
-    _videoMode.size.x  = 1920;
-    _videoMode.size.y  = 1080;
+    _videoMode.size.x  = 3200;
+    _videoMode.size.y  = 1920;
 
     _settings.depthBits      = 24;
     _settings.majorVersion   = 3;
@@ -65,6 +70,56 @@ Renderer::Renderer()
     _window.setFramerateLimit(60);
 }
 
+Renderer::~Renderer()
+{
+    shutdown();
+}
+
+void Renderer::shutdown()
+{
+    if (_window.isOpen() && !_window.setActive(true))
+        std::cerr << "Failed to activate OpenGL context before shutdown" << std::endl;
+    releaseResources();
+    if (_window.isOpen())
+        _window.close();
+}
+
+void Renderer::releaseResources()
+{
+    _playersModels.clear();
+    _playerAnimations.clear();
+    _playerAnimationTimers.clear();
+    _modelsCache.clear();
+    if (_tileMesh) {
+        for (Texture &texture : _tileMesh->textures)
+            deleteTexture(texture.id);
+        _tileMesh.reset();
+    }
+    _shader.reset();
+    _cubemapShader.reset();
+
+    for (GLuint &texture : _groundTextures)
+        deleteTexture(texture);
+    std::vector<GLuint>().swap(_groundTextures);
+
+    deleteTexture(_cubemapTexture);
+
+    if (skyboxVBO != 0)
+        glDeleteBuffers(1, &skyboxVBO);
+    if (skyboxVAO != 0)
+        glDeleteVertexArrays(1, &skyboxVAO);
+    skyboxVBO = 0;
+    skyboxVAO = 0;
+}
+
+void Renderer::deleteTexture(GLuint &texture)
+{
+    if (texture == 0)
+        return;
+    glDeleteTextures(1, &texture);
+    texture = 0;
+}
+
 void Renderer::init()
 {
     glewExperimental = GL_TRUE;
@@ -73,12 +128,30 @@ void Renderer::init()
     srand(time(0));
 
     _shader = std::make_unique<Shader>("shaders/vertex.glsl", "shaders/fragment.glsl");
+    _cubemapShader = std::make_unique<Shader>("shaders/cubemapVert.glsl", "shaders/cubemapFrag.glsl");
+
+    _cubemapShader->use();
+    _cubemapShader->setInt("skybox", 0);
+
     _groundTextures.push_back(TextureLoader::load("ground_1.jpg"));
-    _groundTextures.push_back(TextureLoader::load("ground_2.jpg"));
-    _groundTextures.push_back(TextureLoader::load("ground_2.jpg"));
-    _groundTextures.push_back(TextureLoader::load("ground_2.jpg"));
+    for (int i = 0; i < 3; i++)
+        _groundTextures.push_back(TextureLoader::load("ground_2.jpg"));
     _groundTextures.push_back(TextureLoader::load("ground_3.jpg"));
     _tileMesh = initTile();
+
+    initCubemap();
+
+    std::vector<std::string> faces =
+    { 
+        "textures/right.jpg",
+        "textures/left.jpg",
+        "textures/top.jpg",
+        "textures/bottom.jpg",
+        "textures/front.jpg",
+        "textures/back.jpg"
+    };
+
+    _cubemapTexture = loadCubemap(faces);
 }
 
 void Renderer::render(GameState& state, float deltaTime)
@@ -87,10 +160,38 @@ void Renderer::render(GameState& state, float deltaTime)
     glm::mat4 projection = glm::perspective(glm::radians(45.f), 800.f / 600.f, 0.1f, 100.f);
     std::vector<std::vector<Tile>>& map = state.getMap();
 
+    renderSkybox(projection);
+
     _shader->use();
     _shader->setMat4("view", view);
     _shader->setMat4("projection", projection);
 
+    updatePlayers(state, deltaTime);
+    renderEggs(state);
+    renderMap(map);
+}
+
+void Renderer::renderSkybox(const glm::mat4 &projection)
+{
+    glDepthFunc(GL_LEQUAL);
+    glDepthMask(GL_FALSE);
+
+    _cubemapShader->use();
+    _cubemapShader->setMat4("view", glm::mat4(glm::mat3(_camera.getView())));
+    _cubemapShader->setMat4("projection", projection);
+
+    glBindVertexArray(skyboxVAO);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, _cubemapTexture);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glBindVertexArray(0);
+
+    glDepthMask(GL_TRUE);
+    glDepthFunc(GL_LESS);
+}
+
+void Renderer::updatePlayers(GameState& state, float deltaTime)
+{
     for (int playerId : state._playerToUpt) {
         auto it = _playersModels.find(playerId);
 
@@ -100,14 +201,23 @@ void Renderer::render(GameState& state, float deltaTime)
             Player *player = state.findPlayer(playerId);
 
             if (player != nullptr) {
-                _playersModels.insert({playerId, std::make_shared<Model>( getTeamModel(*player, state), getTileRandPos(state.getTile(player->_x, player->_y)), glm::vec3(0.15f), getPlayerRotation(player->_orientation), glm::vec3(0.f))});
+                _playersModels.insert({playerId, getModel(getTeamModel(*player, state), glm::vec3(0.25f))});
             }
         }
     }
 
-    for (auto& [playerId, playerModel] : _playersModels) {
+    for (auto it = _playersModels.begin(); it != _playersModels.end();) {
+        int playerId = it->first;
+        std::shared_ptr<Model> &playerModel = it->second;
+        Player *player = state.findPlayer(playerId);
         std::string animation = "idle";
 
+        if (player == nullptr || !player->_isAlive) {
+            it = _playersModels.erase(it);
+            _playerAnimations.erase(playerId);
+            _playerAnimationTimers.erase(playerId);
+            continue;
+        }
         if (_playerAnimationTimers[playerId] > 0.f) {
             animation = _playerAnimations[playerId];
             _playerAnimationTimers[playerId] -= deltaTime;
@@ -115,13 +225,28 @@ void Renderer::render(GameState& state, float deltaTime)
             _playerAnimations[playerId] = "idle";
             _playerAnimationTimers[playerId] = 0.f;
         }
+        playerModel->moveTo(
+            glm::vec3(player->_x, 0.f, player->_y),
+            getPlayerRotation(player->_orientation)
+        );
         playerModel->updateAnimation(deltaTime, animation);
         playerModel->Draw(*_shader);
+        ++it;
     }
 
     state._playerToUpt.clear();
+}
 
-    renderMap(map);
+void Renderer::renderEggs(GameState& state)
+{
+    for (auto& egg : state.getEggs()) {
+        glm::mat4 model = glm::translate(glm::mat4(1.f), glm::vec3(egg._x, 0.2f, egg._y));
+        _shader->setMat4("model", model);
+        if(!egg._model)
+            egg._model = getModel("model/Egg.glb", glm::vec3(0.5f));
+        if (egg._isAlive)
+            egg._model->Draw(*_shader, glm::vec3(egg._x, 0.2f, egg._y));
+    }
 }
 
 void Renderer::renderMap(std::vector<std::vector<Tile>>& map)
@@ -145,22 +270,7 @@ void Renderer::renderTile(Tile& tile, float x, float z)
     _tileMesh->textures[0].id = _groundTextures[tile.textureIndex];
     _tileMesh->Draw(*_shader);
 
-    if (tile._resources.empty()) {
-        for (int i = 0; i < tile.linemate; i++)
-            tile._resources.push_back(Resource(getModel("model/Linemate.glb", glm::vec3(0.15f)), getTileRandPos(tile)));
-        for (int i = 0; i < tile.deraumere; i++)
-            tile._resources.push_back(Resource(getModel("model/Deraumere.glb", glm::vec3(0.15f)), getTileRandPos(tile)));
-        for (int i = 0; i < tile.mendiane; i++)
-            tile._resources.push_back(Resource(getModel("model/Mendiane.glb", glm::vec3(0.15f)), getTileRandPos(tile)));
-        for (int i = 0; i < tile.phiras; i++)
-            tile._resources.push_back(Resource(getModel("model/Phiras.glb", glm::vec3(0.15f)), getTileRandPos(tile)));
-        for (int i = 0; i < tile.sibur; i++)
-            tile._resources.push_back(Resource(getModel("model/Sibur.glb", glm::vec3(0.15f)), getTileRandPos(tile)));
-        for (int i = 0; i < tile.thystame; i++)
-            tile._resources.push_back(Resource(getModel("model/Thystame.glb", glm::vec3(0.15f)), getTileRandPos(tile)));
-        for (int i = 0; i < tile.food; i++)
-            tile._resources.push_back(Resource(getModel("model/Food.glb", glm::vec3(200.f)), getTileRandPos(tile)));
-    }
+    processResources(tile);
 
     for (auto& resource : tile._resources) {
         glm::mat4 model = glm::translate(glm::mat4(1.f), resource._pos);
@@ -169,20 +279,41 @@ void Renderer::renderTile(Tile& tile, float x, float z)
     }
 }
 
+void Renderer::processResources(Tile& tile)
+{
+    if (!tile._resources.empty())
+        return;
+    tile._resources.reserve(tile.linemate + tile.deraumere + tile.mendiane
+        + tile.phiras + tile.sibur + tile.thystame + tile.food);
+    addTileResources(tile, tile.linemate, "model/Linemate.glb", glm::vec3(0.15f));
+    addTileResources(tile, tile.deraumere, "model/Deraumere.glb", glm::vec3(0.15f));
+    addTileResources(tile, tile.mendiane, "model/Mendiane.glb", glm::vec3(0.15f));
+    addTileResources(tile, tile.phiras, "model/Phiras.glb", glm::vec3(0.15f));
+    addTileResources(tile, tile.sibur, "model/Sibur.glb", glm::vec3(0.15f));
+    addTileResources(tile, tile.thystame, "model/Thystame.glb", glm::vec3(0.15f));
+    addTileResources(tile, tile.food, "model/Food.glb", glm::vec3(200.f));
+}
+
+void Renderer::addTileResources(Tile& tile, int count, const std::string &modelPath, const glm::vec3 &scale)
+{
+    for (int i = 0; i < count; i++)
+        tile._resources.emplace_back(getModel(modelPath, scale), getTileRandPos(tile));
+}
+
 std::unique_ptr<Mesh> Renderer::initTile()
 {
     //Doc : https://learnopengl.com/Getting-started/Hello-Triangle#:~:text=Vertex%20input
 
     std::vector<Vertex> vertices = {
-        {{0.f,  0.f, 0.f}, {0.f, 0.f, 0.f}, {0.f, 0.f}},
-        {{1.f,  0.f, 0.f}, {0.f, 0.f, 0.f}, {1.f, 0.f}},
-        {{1.f,  0.f, 1.f}, {0.f, 0.f, 0.f}, {1.f, 1.f}},
-        {{0.f,  0.f, 1.f}, {0.f, 0.f, 0.f}, {0.f, 1.f}},
+        makeTileVertex({0.f,  0.f, 0.f}, {0.f, 0.f}),
+        makeTileVertex({1.f,  0.f, 0.f}, {1.f, 0.f}),
+        makeTileVertex({1.f,  0.f, 1.f}, {1.f, 1.f}),
+        makeTileVertex({0.f,  0.f, 1.f}, {0.f, 1.f}),
 
-        {{0.f, -1.f, 0.f}, {0.f, 0.f, 0.f}, {0.f, 0.f}},
-        {{1.f, -1.f, 0.f}, {0.f, 0.f, 0.f}, {1.f, 0.f}},
-        {{1.f, -1.f, 1.f}, {0.f, 0.f, 0.f}, {1.f, 1.f}},
-        {{0.f, -1.f, 1.f}, {0.f, 0.f, 0.f}, {0.f, 1.f}},
+        makeTileVertex({0.f, -1.f, 0.f}, {0.f, 0.f}),
+        makeTileVertex({1.f, -1.f, 0.f}, {1.f, 0.f}),
+        makeTileVertex({1.f, -1.f, 1.f}, {1.f, 1.f}),
+        makeTileVertex({0.f, -1.f, 1.f}, {0.f, 1.f}),
     };
 
     std::vector<unsigned int> indices = {
@@ -208,7 +339,7 @@ void Renderer::initPlayersModels(GameState& state)
     for (auto& [id, player] : state.getPlayers()) {
         _playersModels.insert({
             id,
-            std::make_shared<Model>(getTeamModel(player, state), getTileRandPos(state.getTile(player._x, player._y)), glm::vec3(0.15f), getPlayerRotation(player._orientation), glm::vec3(0.f))
+            getModel(getTeamModel(player, state), glm::vec3(0.25f))
         });
     }
 }
@@ -227,10 +358,15 @@ void Renderer::uptPlayerModel(int playerId, std::shared_ptr<Model> &playerModel,
         _playerAnimations[playerId] = player->_animation;
         _playerAnimationTimers[playerId] = getAnimationDuration(player->_animation);
     } else {
-        _playersModels.erase(playerId);
-        _playerAnimations.erase(playerId);
-        _playerAnimationTimers.erase(playerId);
+        cleanupPlayerModel(playerId);
     }
+}
+
+void Renderer::cleanupPlayerModel(int playerId)
+{
+    _playersModels.erase(playerId);
+    _playerAnimations.erase(playerId);
+    _playerAnimationTimers.erase(playerId);
 }
 
 const sf::VideoMode& Renderer::getVideoMode() const
@@ -266,9 +402,138 @@ glm::vec3 Renderer::getTileRandPos(const Tile& tile)
     return {tile.x + offsetX, 0.f, tile.z + offsetZ};
 }
 
-std::shared_ptr<Model> Renderer::getModel(const std::string path, glm::vec3 scale)
+glm::vec3 Renderer::getTileRandPos(glm::vec3 tilePos)
 {
-    if (_modelsCache.find(path) == _modelsCache.end())
-        _modelsCache[path] = std::make_shared<Model>(path, glm::vec3(0.f, 0.f, 0.f), scale);
-    return _modelsCache[path];;
+    float offsetX = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+    float offsetZ = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+
+    return {tilePos.x + offsetX, tilePos.y, tilePos.z + offsetZ};
+}
+
+std::shared_ptr<Model> Renderer::getModel(const std::string &path, glm::vec3 scale)
+{
+    const std::string key = makeModelCacheKey(path, scale);
+
+    if (_modelsCache.find(key) == _modelsCache.end())
+        _modelsCache[key] = std::make_shared<Model>(path, glm::vec3(0.f, 0.f, 0.f), scale);
+    return _modelsCache[key];
+}
+
+std::string Renderer::makeModelCacheKey(const std::string &path, const glm::vec3 &scale) const
+{
+    std::ostringstream key;
+
+    key << path << ':' << scale.x << ':' << scale.y << ':' << scale.z;
+    return key.str();
+}
+
+unsigned int Renderer::loadCubemap(std::vector<std::string> faces)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+    for (unsigned int i = 0; i < faces.size(); i++)
+    {
+        sf::Image image;
+
+        if (!image.loadFromFile(faces[i]))
+        {
+            std::cout << "Failed to load: " << faces[i] << std::endl;
+            continue;
+        }
+
+        glTexImage2D(
+            GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+            0,
+            GL_RGBA,
+            image.getSize().x,
+            image.getSize().y,
+            0,
+            GL_RGBA,
+            GL_UNSIGNED_BYTE,
+            image.getPixelsPtr()
+        );
+    }
+
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    return textureID;
+}
+
+void Renderer::initCubemap()
+{
+    float skyboxVertices[] =
+    {
+        -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        -1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f
+    };
+
+    glGenVertexArrays(1, &skyboxVAO);
+    glGenBuffers(1, &skyboxVBO);
+
+    glBindVertexArray(skyboxVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+    glBufferData(
+        GL_ARRAY_BUFFER,
+        sizeof(skyboxVertices),
+        skyboxVertices,
+        GL_STATIC_DRAW
+    );
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(
+        0,
+        3,
+        GL_FLOAT,
+        GL_FALSE,
+        3 * sizeof(float),
+        (void*)0
+    );
+
+    glBindVertexArray(0);
 }

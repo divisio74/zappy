@@ -30,6 +30,7 @@ class Model
             glm::vec3 rotation  = glm::vec3(0.f, 0.f, 0.f),
             glm::vec3 offset    = glm::vec3(0.f, 0.f, 0.f)
         );
+        ~Model();
 
         void Draw(Shader &shader);
         void Draw(Shader &shader, glm::vec3 position);

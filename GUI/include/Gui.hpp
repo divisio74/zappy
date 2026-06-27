@@ -5,7 +5,7 @@
 class Gui {
     public:
         Gui();
-        ~Gui() = default;
+        ~Gui();
 
         void run();
         Renderer&        getRenderer();

@@ -131,6 +131,21 @@ void GameState::setGameOver(const std::string &winner)
     _gameOver = true;
 }
 
+void GameState::clear()
+{
+    std::lock_guard<std::mutex> guard(_mutex);
+
+    std::vector<std::vector<Tile>>().swap(_map);
+    _players.clear();
+    std::vector<Egg>().swap(_eggs);
+    std::vector<std::string>().swap(_teams);
+    std::vector<int>().swap(_playerToUpt);
+    _width = 0;
+    _height = 0;
+    std::string().swap(_winner);
+    _gameOver = false;
+}
+
 void GameState::lock()
 {
       _mutex.lock();

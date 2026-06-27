@@ -1,5 +1,8 @@
 #pragma once
+
 #include <cstdint>
+#include <memory>
+#include <Model.hpp>
 
 struct Egg
 {
@@ -8,5 +11,8 @@ struct Egg
     int _x;
     int _y;
     bool _isAlive;
+
+    std::shared_ptr<Model> _model;
+
     Egg();
 };

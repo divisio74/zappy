@@ -40,6 +40,7 @@ class GameState {
 
         void setTimeUnit(int t);
         void setGameOver(const std::string &winner);
+        void clear();
 
         void lock();
         void unlock();

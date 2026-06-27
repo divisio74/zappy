@@ -1,5 +1,6 @@
 #include "Model.hpp"
 #include "TextureLoader.hpp"
+#include <set>
 
 // Doc : https://learnopengl.com/Model-Loading/Model
 
@@ -10,6 +11,20 @@ Model::Model(const std::string &path, glm::vec3 position, glm::vec3 scale, glm::
     _scale = scale;
     _rotation = rotation;
     _offset = offset;
+}
+
+Model::~Model()
+{
+    std::set<GLuint> textures;
+
+    for (const Mesh &mesh : _meshes) {
+        for (const Texture &texture : mesh.textures) {
+            if (texture.id != 0)
+                textures.insert(texture.id);
+        }
+    }
+    for (GLuint texture : textures)
+        glDeleteTextures(1, &texture);
 }
 
 void Model::Draw(Shader &shader)

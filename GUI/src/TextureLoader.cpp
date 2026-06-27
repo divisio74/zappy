@@ -1,4 +1,5 @@
 #include "TextureLoader.hpp"
+#include <iostream>
 
 GLuint TextureLoader::load(const std::string& path, const std::string& directory, const aiScene *scene)
 {
@@ -13,14 +14,21 @@ GLuint TextureLoader::load(const std::string& path, const std::string& directory
 
     sf::Image image;
 
+    bool loaded = false;
+
     if (scene) {
         const aiTexture* embeddedTex = scene->GetEmbeddedTexture(path.c_str());
-        if (embeddedTex) {
-            image.loadFromMemory(embeddedTex->pcData, embeddedTex->mWidth);
-        }
+        if (embeddedTex)
+            loaded = image.loadFromMemory(embeddedTex->pcData, embeddedTex->mWidth);
     } else {
         std::string fullPath = directory.empty() ? path : directory + "/" + path;
-        image.loadFromFile(fullPath);
+        loaded = image.loadFromFile(fullPath);
+    }
+
+    if (!loaded) {
+        std::cerr << "Failed to load texture: " << path << std::endl;
+        glDeleteTextures(1, &texId);
+        return 0;
     }
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
