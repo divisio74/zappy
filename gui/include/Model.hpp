@@ -30,10 +30,11 @@ class Model
             glm::vec3 rotation  = glm::vec3(0.f, 0.f, 0.f),
             glm::vec3 offset    = glm::vec3(0.f, 0.f, 0.f)
         );
+        ~Model();
 
         void Draw(Shader &shader);
         void Draw(Shader &shader, glm::vec3 position);
-        void updateAnimation(float deltaTime, const std::optional<std::string>& animName = std::nullopt);
+        void updateAnimation(float deltaTime, const std::optional<std::string>& animName = std::nullopt, bool loop = true);
         void moveTo(glm::vec3 position, glm::vec3 rotation);
 
     private:
@@ -51,6 +52,7 @@ class Model
         int                         _boneCount = 0;
         float                       _animTime  = 0.f;
         int                         _currentAnim = 0;
+        std::string                 _currentAnimName;
 
         void loadModel(const std::string& path);
         void processNode(aiNode *node, const aiScene *scene);

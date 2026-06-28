@@ -38,12 +38,18 @@ class Mesh {
         std::vector<Texture>      textures;
 
         Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures);
+        ~Mesh();
+        Mesh(const Mesh&) = delete;
+        Mesh& operator=(const Mesh&) = delete;
+        Mesh(Mesh&& other) noexcept;
+        Mesh& operator=(Mesh&& other) noexcept;
         void Draw(Shader &shader);
 
     private:
-        GLuint _VAO;
-        GLuint _VBO;
-        GLuint _EBO;
+        GLuint _VAO = 0;
+        GLuint _VBO = 0;
+        GLuint _EBO = 0;
 
         void setupMesh();
+        void release();
 };  

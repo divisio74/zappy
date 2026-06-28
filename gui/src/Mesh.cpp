@@ -9,6 +9,47 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std:
     setupMesh();
 }
 
+Mesh::~Mesh()
+{
+    release();
+}
+
+Mesh::Mesh(Mesh&& other) noexcept
+{
+    *this = std::move(other);
+}
+
+Mesh& Mesh::operator=(Mesh&& other) noexcept
+{
+    if (this == &other)
+        return *this;
+
+    release();
+    vertices = std::move(other.vertices);
+    indices = std::move(other.indices);
+    textures = std::move(other.textures);
+    _VAO = other._VAO;
+    _VBO = other._VBO;
+    _EBO = other._EBO;
+    other._VAO = 0;
+    other._VBO = 0;
+    other._EBO = 0;
+    return *this;
+}
+
+void Mesh::release()
+{
+    if (_EBO != 0)
+        glDeleteBuffers(1, &_EBO);
+    if (_VBO != 0)
+        glDeleteBuffers(1, &_VBO);
+    if (_VAO != 0)
+        glDeleteVertexArrays(1, &_VAO);
+    _EBO = 0;
+    _VBO = 0;
+    _VAO = 0;
+}
+
 void Mesh::Draw(Shader &shader) 
 {
     unsigned int diffuseNr = 1;

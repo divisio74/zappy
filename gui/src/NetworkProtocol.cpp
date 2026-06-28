@@ -54,6 +54,28 @@ static void removeResourceTile(Tile &tile, int resourceIndex)
     }
 }
 
+static int getAnimationPriority(const std::string &animation)
+{
+    if (animation == "Death")
+        return 100;
+    if (animation == "kick" || animation == "Dance" || animation == "pickup")
+        return 50;
+    if (animation == "walk")
+        return 10;
+    return 0;
+}
+
+static void setPlayerAnimation(Player &player, const std::string &animation)
+{
+    if (getAnimationPriority(animation) >= getAnimationPriority(player._animation))
+        player._animation = animation;
+}
+
+static void forcePlayerAnimation(Player &player, const std::string &animation)
+{
+    player._animation = animation;
+}
+
 void NetworkProtocol::poll(GameState &state)
 {
     std::vector<std::string> lines = receive();
@@ -119,7 +141,7 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
         newPlayer._isAlive = true;
         newPlayer._animation = "idle";
         state.addPlayer(newPlayer);
-        state._playerToUpt.push_back(newPlayer._id);
+        state.addPlayerToUpdate(newPlayer._id);
     }
 
     else if (cmd == "ppo") {
@@ -136,8 +158,10 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
             player->_x = x;
             player->_y = y;
             player->_orientation = orientation;
-            player->_animation = hasMoved ? "walk" : "idle";
-            state._playerToUpt.push_back(player->_id);
+            if (hasMoved) {
+                setPlayerAnimation(*player, "walk");
+                state.addPlayerToUpdate(player->_id);
+            }
         }
     }
 
@@ -174,17 +198,27 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
         words >> idStr;
         int id = std::stoi(idStr.substr(1));
 
+        Player *player = state.findPlayer(id);
+        if (player != nullptr) {
+            setPlayerAnimation(*player, "kick");
+            state.addPlayerToUpdate(player->_id);
+        }
         std::cout << "[expulsion] joueur " << id << "\n";
     }
 
     else if (cmd == "pbc") {
         std::string idstr;
         std::string message;
-
         words >> idstr;
         std::getline(words, message);
-        std::cout << "[broadcast " << idstr << "]" << message << "\n";
-    }
+
+        int id = std::stoi(idstr.substr(1));
+        Player *player = state.findPlayer(id);
+        std::string teamName = idstr;
+        if (player != nullptr)
+            teamName = player->_teamName;
+        state.addBroadcast(teamName, message);
+}
 
     else if (cmd == "pic") {
         int x = 0;
@@ -199,6 +233,11 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
         
         while (words >> idstr) {
             id = std::stoi(idstr.substr(1));
+            Player *player = state.findPlayer(id);
+            if (player != nullptr) {
+                setPlayerAnimation(*player, "Dance");
+                state.addPlayerToUpdate(player->_id);
+            }
             std::cout << id << " ";
         }
         std::cout << "\n";
@@ -210,6 +249,12 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
         std::string result;
 
         words >> x >> y >> result;
+        for (auto &[id, player] : state.getPlayers()) {
+            if (player._x == x && player._y == y) {
+                forcePlayerAnimation(player, "idle");
+                state.addPlayerToUpdate(player._id);
+            }
+        }
         std::cout << "[incantation] fin en (" << x << "," << y
             << ") resultat " << result << "\n";
     }
@@ -251,8 +296,8 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
             Tile &t = state.getTile(player->_x, player->_y);
             removeResourceTile(t, resourceIndex);
             t._resources.clear();
-            player->_animation = "pickup";
-            state._playerToUpt.push_back(player->_id);
+            setPlayerAnimation(*player, "pickup");
+            state.addPlayerToUpdate(player->_id);
         }
     }
 
@@ -263,9 +308,10 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
         int id = std::stoi(idstr.substr(1));
 
         Player *player = state.findPlayer(id);
-        if (player != nullptr) {
+        if (player != nullptr && player->_isAlive) {
+            setPlayerAnimation(*player, "Death");
             player->_isAlive = false;
-            state._playerToUpt.push_back(player->_id);
+            state.addPlayerToUpdate(player->_id);
         }
     }
 

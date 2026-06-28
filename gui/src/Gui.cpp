@@ -5,11 +5,32 @@ Gui::Gui()
     _renderer.init();
 }
 
+Gui::~Gui()
+{
+    _state.clear();
+}
+
 void Gui::run()
 {
     while (const std::optional eventOptional = _renderer.getWindow().pollEvent()) {
-        if (eventOptional->is<sf::Event::Closed>())
-            _renderer.getWindow().close();
+        if (eventOptional->is<sf::Event::Closed>()) {
+            _state.clear();
+            _renderer.shutdown();
+            return;
+        }
+        if (const auto *key = eventOptional->getIf<sf::Event::KeyPressed>()) {
+            if (key->code == sf::Keyboard::Key::Escape) {
+                _state.clear();
+                _renderer.shutdown();
+                return;
+            }
+            if (key->code == sf::Keyboard::Key::T)
+                _renderer.toggleGroundOutline();
+        }
+        if (const auto *mouse = eventOptional->getIf<sf::Event::MouseButtonPressed>()) {
+            if (mouse->button == sf::Mouse::Button::Left)
+                _renderer.selectTileAt(_state, mouse->position);
+        }
     }
 
     float deltaTime = _clock.restart().asSeconds();
@@ -23,7 +44,7 @@ void Gui::run()
     _renderer.getWindow().display();
 }
 
-Renderer &Gui::getRenderer()
+IRenderer &Gui::getRenderer()
 {
     return _renderer;
 }

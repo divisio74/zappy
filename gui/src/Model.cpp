@@ -1,5 +1,6 @@
 #include "Model.hpp"
 #include "TextureLoader.hpp"
+#include <set>
 
 // Doc : https://learnopengl.com/Model-Loading/Model
 
@@ -10,6 +11,20 @@ Model::Model(const std::string &path, glm::vec3 position, glm::vec3 scale, glm::
     _scale = scale;
     _rotation = rotation;
     _offset = offset;
+}
+
+Model::~Model()
+{
+    std::set<GLuint> textures;
+
+    for (const Mesh &mesh : _meshes) {
+        for (const Texture &texture : mesh.textures) {
+            if (texture.id != 0)
+                textures.insert(texture.id);
+        }
+    }
+    for (GLuint texture : textures)
+        glDeleteTextures(1, &texture);
 }
 
 void Model::Draw(Shader &shader)
@@ -231,7 +246,7 @@ glm::vec3 Model::interpolateScale(aiNodeAnim* channel)
     return glm::mix(glm::vec3(s1.x, s1.y, s1.z), glm::vec3(s2.x, s2.y, s2.z), factor);
 }
 
-void Model::updateAnimation(float deltaTime, const std::optional<std::string>& animName)
+void Model::updateAnimation(float deltaTime, const std::optional<std::string>& animName, bool loop)
 {
     if (!_scene || _scene->mNumAnimations == 0)
         return;
@@ -244,7 +259,10 @@ void Model::updateAnimation(float deltaTime, const std::optional<std::string>& a
     aiAnimation* anim = _scene->mAnimations[_currentAnim];
     float tps = anim->mTicksPerSecond != 0 ? anim->mTicksPerSecond : 25.f;
     _animTime += deltaTime * tps;
-    _animTime  = fmod(_animTime, anim->mDuration);
+    if (loop)
+        _animTime = fmod(_animTime, anim->mDuration);
+    else if (_animTime > anim->mDuration)
+        _animTime = anim->mDuration;
 
     processNodeAnimation(_scene->mRootNode, glm::mat4(1.f), anim);
 }
@@ -313,7 +331,10 @@ void Model::setAnim(const std::string &animName)
         std::string currName = toLower(anim->mName.C_Str());
 
         if (currName.find(targetName) != std::string::npos) {
+            if (_currentAnim != static_cast<int>(i) || _currentAnimName != targetName)
+                _animTime = 0.f;
             _currentAnim = i;
+            _currentAnimName = targetName;
             return;
         }
     }

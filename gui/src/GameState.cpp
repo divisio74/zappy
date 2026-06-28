@@ -105,6 +105,21 @@ void GameState::addPlayer(const Player &player)
     _players[player._id] = player;
 }
 
+void GameState::addPlayerToUpdate(int playerId)
+{
+    _playersToUpdate.push_back(playerId);
+}
+
+const std::vector<int> &GameState::getPlayersToUpdate() const
+{
+    return _playersToUpdate;
+}
+
+void GameState::clearPlayersToUpdate()
+{
+    _playersToUpdate.clear();
+}
+
 void GameState::addEgg(const Egg &egg)
 {
     _eggs.push_back(egg);
@@ -131,6 +146,21 @@ void GameState::setGameOver(const std::string &winner)
     _gameOver = true;
 }
 
+void GameState::clear()
+{
+    std::lock_guard<std::mutex> guard(_mutex);
+
+    std::vector<std::vector<Tile>>().swap(_map);
+    _players.clear();
+    std::vector<Egg>().swap(_eggs);
+    std::vector<std::string>().swap(_teams);
+    std::vector<int>().swap(_playersToUpdate);
+    _width = 0;
+    _height = 0;
+    std::string().swap(_winner);
+    _gameOver = false;
+}
+
 void GameState::lock()
 {
       _mutex.lock();
@@ -139,4 +169,16 @@ void GameState::lock()
 void GameState::unlock()
 {
       _mutex.unlock();
+}
+
+void GameState::addBroadcast(const std::string &teamName, const std::string &msg)
+{
+    if (_broadcasts.size() >= 5)
+        _broadcasts.erase(_broadcasts.begin());
+    _broadcasts.push_back({teamName, msg});
+}
+
+const std::vector<std::pair<std::string, std::string>> &GameState::getBroadcasts() const
+{
+    return _broadcasts;
 }

@@ -14,6 +14,12 @@ Shader::Shader(const std::string& vertPath, const std::string& fragPath)
     glDeleteShader(frag);
 }
 
+Shader::~Shader()
+{
+    if (_id != 0)
+        glDeleteProgram(_id);
+}
+
 void Shader::use()
 {
     glUseProgram(_id);
