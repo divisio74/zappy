@@ -117,11 +117,11 @@ void validateTeamNames(const std::vector<std::string> &teamNames)
 
 void validateWorldSize(std::size_t width, std::size_t height)
 {
-    if (width < MIN_WORLD_SIZE || width > MAX_WORLD_SIZE
-        || height < MIN_WORLD_SIZE || height > MAX_WORLD_SIZE)
+    if (width < MIN_MAP_SIZE || width > MAX_MAP_SIZE
+        || height < MIN_MAP_SIZE || height > MAX_MAP_SIZE)
         throw std::invalid_argument("Invalid map size: width and height must be between "
-            + std::to_string(MIN_WORLD_SIZE) + " and "
-            + std::to_string(MAX_WORLD_SIZE));
+            + std::to_string(MIN_MAP_SIZE) + " and "
+            + std::to_string(MAX_MAP_SIZE));
 }
 
 void validateClientsNumber(std::size_t clientsNb)
@@ -139,7 +139,8 @@ ServerConfig Parser::parse(int argc, char **argv) const
         std::string arg(argv[i]);
         parseArgument(arg, argc, argv, i, config);
     }
-    if (argCount != REQUIRED_ARG_COUNT)
-        throw std::invalid_argument(USAGE);
+    validateWorldSize(config.width, config.height);
+    validateTeamNames(config.teamNames);
+    validateClientsNumber(config.clientsNb);
     return config;
 }
