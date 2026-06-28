@@ -5,15 +5,15 @@
 void Cubemap::init()
 {
     const std::vector<std::string> faces = {
-        "textures/right.jpg",
-        "textures/left.jpg",
-        "textures/top.jpg",
-        "textures/bottom.jpg",
-        "textures/front.jpg",
-        "textures/back.jpg"
+        "gui/textures/right.jpg",
+        "gui/textures/left.jpg",
+        "gui/textures/top.jpg",
+        "gui/textures/bottom.jpg",
+        "gui/textures/front.jpg",
+        "gui/textures/back.jpg"
     };
 
-    _shader = std::make_unique<Shader>("shaders/cubemapVert.glsl", "shaders/cubemapFrag.glsl");
+    _shader = std::make_unique<Shader>("gui/shaders/cubemapVert.glsl", "gui/shaders/cubemapFrag.glsl");
     _shader->use();
     _shader->setInt("skybox", 0);
 

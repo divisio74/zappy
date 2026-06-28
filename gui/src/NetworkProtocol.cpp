@@ -1,4 +1,5 @@
 #include "../include/NetworkProtocol.hpp"
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 
@@ -44,13 +45,13 @@ static void addResourceTile(Tile &tile, int resourceIndex)
 static void removeResourceTile(Tile &tile, int resourceIndex)
 {
     switch (resourceIndex) {
-        case 0: tile.food--; break;
-        case 1: tile.linemate--; break;
-        case 2: tile.deraumere--; break;
-        case 3: tile.sibur--; break;
-        case 4: tile.mendiane--; break;
-        case 5: tile.phiras--; break;
-        case 6: tile.thystame--; break;
+        case 0: tile.food = std::max(0, tile.food - 1); break;
+        case 1: tile.linemate = std::max(0, tile.linemate - 1); break;
+        case 2: tile.deraumere = std::max(0, tile.deraumere - 1); break;
+        case 3: tile.sibur = std::max(0, tile.sibur - 1); break;
+        case 4: tile.mendiane = std::max(0, tile.mendiane - 1); break;
+        case 5: tile.phiras = std::max(0, tile.phiras - 1); break;
+        case 6: tile.thystame = std::max(0, tile.thystame - 1); break;
     }
 }
 

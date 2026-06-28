@@ -10,5 +10,5 @@
 
 class TextureLoader {
     public:
-        static GLuint load(const std::string& path, const std::string& directory = "textures", const aiScene *scene = nullptr);
+        static GLuint load(const std::string& path, const std::string& directory = "gui/textures", const aiScene *scene = nullptr);
 };

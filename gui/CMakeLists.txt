@@ -23,7 +23,7 @@ target_link_libraries(zappy_gui PRIVATE
     OpenGL::GL
     GLEW::GLEW
     assimp::assimp
-    glfw3
+    glfw
     SFML::Graphics
     SFML::Window
     SFML::System

@@ -1,4 +1,5 @@
 #include "Renderer.hpp"
+#include <algorithm>
 #include <cmath>
 
 static glm::vec3 getPlayerRotation(int orientation)
@@ -37,23 +38,23 @@ static std::string getTeamModel(const Player& player, const GameState& state)
     const auto& teams = state.getTeams();
 
     if (teams.size() > 4)
-        return "model/FrogMech.glb";
+        return "gui/model/FrogMech.glb";
 
     auto it = std::find(teams.begin(), teams.end(), player._teamName);
 
     if (it == teams.end())
-        return "model/Astronaut.glb";
+        return "gui/model/Astronaut.glb";
 
     int teamNum = static_cast<int>(std::distance(teams.begin(), it));
 
     switch (teamNum)
     {
-        case 0: return "model/FrogMech.glb";
-        case 1: return "model/BeeMech.glb";
-        case 2: return "model/FlamMech.glb";
-        case 3: return "model/FoxMech.glb";
+        case 0: return "gui/model/FrogMech.glb";
+        case 1: return "gui/model/BeeMech.glb";
+        case 2: return "gui/model/FlamMech.glb";
+        case 3: return "gui/model/FoxMech.glb";
         default:
-            return "model/FrogMech.glb";
+            return "gui/model/FrogMech.glb";
     }
 }
 
@@ -134,7 +135,7 @@ void Renderer::init()
 
     _hud.init();
 
-    _shader = std::make_unique<Shader>("shaders/vertex.glsl", "shaders/fragment.glsl");
+    _shader = std::make_unique<Shader>("gui/shaders/vertex.glsl", "gui/shaders/fragment.glsl");
     _cubemap.init();
 
     _groundTextures.push_back(TextureLoader::load("ground_1.jpg"));
@@ -276,7 +277,7 @@ void Renderer::renderEggs(GameState& state)
         glm::mat4 model = glm::translate(glm::mat4(1.f), eggPos);
         _shader->setMat4("model", model);
         if(!egg._model)
-            egg._model = getModel("model/Egg.glb", glm::vec3(0.5f));
+            egg._model = getModel("gui/model/Egg.glb", glm::vec3(0.5f));
         egg._model->Draw(*_shader, eggPos);
     }
 
@@ -325,19 +326,24 @@ void Renderer::processResources(Tile& tile)
 {
     if (!tile._resources.empty())
         return;
-    tile._resources.reserve(tile.linemate + tile.deraumere + tile.mendiane
-        + tile.phiras + tile.sibur + tile.thystame + tile.food);
-    addTileResources(tile, tile.linemate, "model/Linemate.glb", glm::vec3(0.15f));
-    addTileResources(tile, tile.deraumere, "model/Deraumere.glb", glm::vec3(0.15f));
-    addTileResources(tile, tile.mendiane, "model/Mendiane.glb", glm::vec3(0.15f));
-    addTileResources(tile, tile.phiras, "model/Phiras.glb", glm::vec3(0.15f));
-    addTileResources(tile, tile.sibur, "model/Sibur.glb", glm::vec3(0.15f));
-    addTileResources(tile, tile.thystame, "model/Thystame.glb", glm::vec3(0.15f));
-    addTileResources(tile, tile.food, "model/Food.glb", glm::vec3(200.f));
+    tile._resources.reserve(
+        std::max(0, tile.linemate) + std::max(0, tile.deraumere)
+        + std::max(0, tile.mendiane) + std::max(0, tile.phiras)
+        + std::max(0, tile.sibur) + std::max(0, tile.thystame)
+        + std::max(0, tile.food));
+    addTileResources(tile, tile.linemate, "gui/model/Linemate.glb", glm::vec3(0.15f));
+    addTileResources(tile, tile.deraumere, "gui/model/Deraumere.glb", glm::vec3(0.15f));
+    addTileResources(tile, tile.mendiane, "gui/model/Mendiane.glb", glm::vec3(0.15f));
+    addTileResources(tile, tile.phiras, "gui/model/Phiras.glb", glm::vec3(0.15f));
+    addTileResources(tile, tile.sibur, "gui/model/Sibur.glb", glm::vec3(0.15f));
+    addTileResources(tile, tile.thystame, "gui/model/Thystame.glb", glm::vec3(0.15f));
+    addTileResources(tile, tile.food, "gui/model/Food.glb", glm::vec3(200.f));
 }
 
 void Renderer::addTileResources(Tile& tile, int count, const std::string &modelPath, const glm::vec3 &scale)
 {
+    if (count <= 0)
+        return;
     for (int i = 0; i < count; i++)
         tile._resources.emplace_back(getModel(modelPath, scale), getTileRandPos(tile));
 }

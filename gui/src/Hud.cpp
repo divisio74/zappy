@@ -22,13 +22,13 @@ namespace {
 
 void Hud::init()
 {
-    if (!_font.openFromFile("fonts/arial.ttf"))
-        std::cerr << "Failed to load HUD font: fonts/arial.ttf" << std::endl;
+    if (!_font.openFromFile("gui/fonts/arial.ttf"))
+        std::cerr << "Failed to load HUD font: gui/fonts/arial.ttf" << std::endl;
     else
         _hasFont = true;
 
-    if (!_cursorTexture.loadFromFile("textures/cursor.png"))
-        std::cerr << "Failed to load cursor: textures/cursor.png" << std::endl;
+    if (!_cursorTexture.loadFromFile("gui/textures/cursor.png"))
+        std::cerr << "Failed to load cursor: gui/textures/cursor.png" << std::endl;
     else
         _hasCursorTexture = true;
 }

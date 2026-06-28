@@ -2,7 +2,7 @@
 #include <cerrno>
 #include <iostream>
 #include <sys/select.h>
- 
+
 NetworkBase::NetworkBase()
     : _connected(false)
 {
@@ -23,6 +23,8 @@ bool NetworkBase::connect(const std::string &host, int port)
         return false;
     }
     _socket->write("GRAPHIC");
+    _socket->write("mct");
+    _socket->write("tna");
     _connected = true;
     std::cout << "NetworkBase: connecté au serveur Zappy\n";
     return true;
