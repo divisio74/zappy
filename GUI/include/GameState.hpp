@@ -37,6 +37,9 @@ class GameState {
         void setSize(int width, int height);
         void addTeam(const std::string &name);
         void addPlayer(const Player &player);
+        void addPlayerToUpdate(int playerId);
+        const std::vector<int> &getPlayersToUpdate() const;
+        void clearPlayersToUpdate();
 
         void setTimeUnit(int t);
         void setGameOver(const std::string &winner);
@@ -45,16 +48,20 @@ class GameState {
         void lock();
         void unlock();
 
-        std::vector<int>    _playerToUpt; // si pas bien que ce soit dans GameState alors faire copie player vector dans renderer et comparé (pas opti)
+        void addBroadcast(const std::string &teamName, const std::string &msg);
+        const std::vector<std::pair<std::string, std::string>> &getBroadcasts() const;
+    
     private:
         int _width;
         int _height;
         std::vector<std::vector<Tile>> _map;
         std::map<int, Player> _players;
+        std::vector<int> _playersToUpdate;
         std::vector<Egg> _eggs;
         std::vector<std::string> _teams;
         int _timeUnit;
         bool _gameOver;
         std::string _winner;
         std::mutex _mutex;
+        std::vector<std::pair<std::string, std::string>> _broadcasts;
 };

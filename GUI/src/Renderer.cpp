@@ -1,4 +1,5 @@
 #include "Renderer.hpp"
+#include <cmath>
 
 static glm::vec3 getPlayerRotation(int orientation)
 {
@@ -18,6 +19,12 @@ static glm::vec3 getPlayerRotation(int orientation)
 
 static float getAnimationDuration(const std::string &animation)
 {
+    if (animation == "Death")
+        return 1.4f;
+    if (animation == "Dance")
+        return 2.5f;
+    if (animation == "kick")
+        return 0.7f;
     if (animation == "pickup")
         return 0.8f;
     if (animation == "walk")
@@ -30,7 +37,7 @@ static std::string getTeamModel(const Player& player, const GameState& state)
     const auto& teams = state.getTeams();
 
     if (teams.size() > 4)
-        return "model/Astronaut.glb";
+        return "model/FrogMech.glb";
 
     auto it = std::find(teams.begin(), teams.end(), player._teamName);
 
@@ -46,7 +53,7 @@ static std::string getTeamModel(const Player& player, const GameState& state)
         case 2: return "model/FlamMech.glb";
         case 3: return "model/FoxMech.glb";
         default:
-            return "model/Astronaut.glb";
+            return "model/FrogMech.glb";
     }
 }
 
@@ -57,15 +64,14 @@ static Vertex makeTileVertex(glm::vec3 position, glm::vec2 texCoords)
 
 Renderer::Renderer()
 {
-    _videoMode.size.x  = 3200;
-    _videoMode.size.y  = 1920;
+    _videoMode.size.x  = 1920;
+    _videoMode.size.y  = 1080;
 
     _settings.depthBits      = 24;
     _settings.majorVersion   = 3;
     _settings.minorVersion   = 3;
-    _settings.attributeFlags = sf::ContextSettings::Core;
 
-    _window = sf::Window(_videoMode, "Zappy", sf::State::Windowed, _settings);
+    _window = sf::RenderWindow(_videoMode, "Zappy", sf::State::Windowed, _settings);
     _window.setMouseCursorVisible(false);
     _window.setFramerateLimit(60);
 }
@@ -77,6 +83,9 @@ Renderer::~Renderer()
 
 void Renderer::shutdown()
 {
+    if (_isShutdown)
+        return;
+    _isShutdown = true;
     if (_window.isOpen() && !_window.setActive(true))
         std::cerr << "Failed to activate OpenGL context before shutdown" << std::endl;
     releaseResources();
@@ -87,29 +96,25 @@ void Renderer::shutdown()
 void Renderer::releaseResources()
 {
     _playersModels.clear();
+    _playerRenderPositions.clear();
+    _eggRenderPositions.clear();
     _playerAnimations.clear();
     _playerAnimationTimers.clear();
     _modelsCache.clear();
-    if (_tileMesh) {
-        for (Texture &texture : _tileMesh->textures)
-            deleteTexture(texture.id);
+    if (_tileMesh)
         _tileMesh.reset();
-    }
     _shader.reset();
-    _cubemapShader.reset();
+    _cubemap.release();
+    _hud.release();
 
     for (GLuint &texture : _groundTextures)
         deleteTexture(texture);
     std::vector<GLuint>().swap(_groundTextures);
 
-    deleteTexture(_cubemapTexture);
+    for (GLuint &texture : _outlinedGroundTextures)
+        deleteTexture(texture);
+    std::vector<GLuint>().swap(_outlinedGroundTextures);
 
-    if (skyboxVBO != 0)
-        glDeleteBuffers(1, &skyboxVBO);
-    if (skyboxVAO != 0)
-        glDeleteVertexArrays(1, &skyboxVAO);
-    skyboxVBO = 0;
-    skyboxVAO = 0;
 }
 
 void Renderer::deleteTexture(GLuint &texture)
@@ -127,40 +132,60 @@ void Renderer::init()
     glEnable(GL_DEPTH_TEST);
     srand(time(0));
 
-    _shader = std::make_unique<Shader>("shaders/vertex.glsl", "shaders/fragment.glsl");
-    _cubemapShader = std::make_unique<Shader>("shaders/cubemapVert.glsl", "shaders/cubemapFrag.glsl");
+    _hud.init();
 
-    _cubemapShader->use();
-    _cubemapShader->setInt("skybox", 0);
+    _shader = std::make_unique<Shader>("shaders/vertex.glsl", "shaders/fragment.glsl");
+    _cubemap.init();
 
     _groundTextures.push_back(TextureLoader::load("ground_1.jpg"));
     for (int i = 0; i < 3; i++)
         _groundTextures.push_back(TextureLoader::load("ground_2.jpg"));
     _groundTextures.push_back(TextureLoader::load("ground_3.jpg"));
+
+    _outlinedGroundTextures.push_back(TextureLoader::load("outlined_ground_1.jpg"));
+    for (int i = 0; i < 3; i++)
+        _outlinedGroundTextures.push_back(TextureLoader::load("outlined_ground_2.jpg"));
+    _outlinedGroundTextures.push_back(TextureLoader::load("outlined_ground_3.jpg"));
+
     _tileMesh = initTile();
 
-    initCubemap();
+}
 
-    std::vector<std::string> faces =
-    { 
-        "textures/right.jpg",
-        "textures/left.jpg",
-        "textures/top.jpg",
-        "textures/bottom.jpg",
-        "textures/front.jpg",
-        "textures/back.jpg"
-    };
+void Renderer::toggleGroundOutline()
+{
+    _showOutlinedGround = !_showOutlinedGround;
+}
 
-    _cubemapTexture = loadCubemap(faces);
+void Renderer::selectTileAt(GameState& state, sf::Vector2i mousePosition)
+{
+    if (state.getWidth() <= 0 || state.getHeight() <= 0) {
+        _selectedTile.reset();
+        return;
+    }
+
+    const std::optional<glm::vec3> hit = getGroundHitPoint(mousePosition);
+    if (!hit) {
+        _selectedTile.reset();
+        return;
+    }
+
+    const int tileX = static_cast<int>(std::floor(hit->x));
+    const int tileZ = static_cast<int>(std::floor(hit->z));
+
+    if (tileX < 0 || tileX >= state.getWidth() || tileZ < 0 || tileZ >= state.getHeight()) {
+        _selectedTile.reset();
+        return;
+    }
+    _selectedTile = sf::Vector2i(tileX, tileZ);
 }
 
 void Renderer::render(GameState& state, float deltaTime)
 {
     glm::mat4 view = _camera.getView();
-    glm::mat4 projection = glm::perspective(glm::radians(45.f), 800.f / 600.f, 0.1f, 100.f);
+    glm::mat4 projection = getProjectionMatrix();
     std::vector<std::vector<Tile>>& map = state.getMap();
 
-    renderSkybox(projection);
+    _cubemap.render(view, projection);
 
     _shader->use();
     _shader->setMat4("view", view);
@@ -169,30 +194,12 @@ void Renderer::render(GameState& state, float deltaTime)
     updatePlayers(state, deltaTime);
     renderEggs(state);
     renderMap(map);
-}
-
-void Renderer::renderSkybox(const glm::mat4 &projection)
-{
-    glDepthFunc(GL_LEQUAL);
-    glDepthMask(GL_FALSE);
-
-    _cubemapShader->use();
-    _cubemapShader->setMat4("view", glm::mat4(glm::mat3(_camera.getView())));
-    _cubemapShader->setMat4("projection", projection);
-
-    glBindVertexArray(skyboxVAO);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, _cubemapTexture);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
-    glBindVertexArray(0);
-
-    glDepthMask(GL_TRUE);
-    glDepthFunc(GL_LESS);
+    _hud.render(_window, state, _selectedTile);
 }
 
 void Renderer::updatePlayers(GameState& state, float deltaTime)
 {
-    for (int playerId : state._playerToUpt) {
+    for (int playerId : state.getPlayersToUpdate()) {
         auto it = _playersModels.find(playerId);
 
         if (it != _playersModels.end()) {
@@ -201,7 +208,7 @@ void Renderer::updatePlayers(GameState& state, float deltaTime)
             Player *player = state.findPlayer(playerId);
 
             if (player != nullptr) {
-                _playersModels.insert({playerId, getModel(getTeamModel(*player, state), glm::vec3(0.25f))});
+                _playersModels.insert({playerId, createPlayerModel(*player, state)});
             }
         }
     }
@@ -212,8 +219,16 @@ void Renderer::updatePlayers(GameState& state, float deltaTime)
         Player *player = state.findPlayer(playerId);
         std::string animation = "idle";
 
-        if (player == nullptr || !player->_isAlive) {
+        if (player == nullptr) {
             it = _playersModels.erase(it);
+            _playerRenderPositions.erase(playerId);
+            _playerAnimations.erase(playerId);
+            _playerAnimationTimers.erase(playerId);
+            continue;
+        }
+        if (!player->_isAlive && _playerAnimationTimers[playerId] <= 0.f) {
+            it = _playersModels.erase(it);
+            _playerRenderPositions.erase(playerId);
             _playerAnimations.erase(playerId);
             _playerAnimationTimers.erase(playerId);
             continue;
@@ -225,27 +240,51 @@ void Renderer::updatePlayers(GameState& state, float deltaTime)
             _playerAnimations[playerId] = "idle";
             _playerAnimationTimers[playerId] = 0.f;
         }
+        glm::vec3 tilePos(player->_x, 0.f, player->_y);
+        auto posIt = _playerRenderPositions.find(playerId);
+        if (posIt == _playerRenderPositions.end()
+            || static_cast<int>(std::floor(posIt->second.x)) != player->_x
+            || static_cast<int>(std::floor(posIt->second.z)) != player->_y) {
+            _playerRenderPositions[playerId] = getTileRandPos(tilePos);
+        }
         playerModel->moveTo(
-            glm::vec3(player->_x, 0.f, player->_y),
+            _playerRenderPositions[playerId],
             getPlayerRotation(player->_orientation)
         );
-        playerModel->updateAnimation(deltaTime, animation);
+        playerModel->updateAnimation(deltaTime, animation, animation != "Death");
         playerModel->Draw(*_shader);
         ++it;
     }
 
-    state._playerToUpt.clear();
+    state.clearPlayersToUpdate();
 }
 
 void Renderer::renderEggs(GameState& state)
 {
     for (auto& egg : state.getEggs()) {
-        glm::mat4 model = glm::translate(glm::mat4(1.f), glm::vec3(egg._x, 0.2f, egg._y));
+        if (!egg._isAlive) {
+            _eggRenderPositions.erase(egg._id);
+            continue;
+        }
+        auto posIt = _eggRenderPositions.find(egg._id);
+        if (posIt == _eggRenderPositions.end()
+            || static_cast<int>(std::floor(posIt->second.x)) != egg._x
+            || static_cast<int>(std::floor(posIt->second.z)) != egg._y) {
+            _eggRenderPositions[egg._id] = getTileRandPos(glm::vec3(egg._x, 0.2f, egg._y));
+        }
+        glm::vec3 eggPos = _eggRenderPositions[egg._id];
+        glm::mat4 model = glm::translate(glm::mat4(1.f), eggPos);
         _shader->setMat4("model", model);
         if(!egg._model)
             egg._model = getModel("model/Egg.glb", glm::vec3(0.5f));
-        if (egg._isAlive)
-            egg._model->Draw(*_shader, glm::vec3(egg._x, 0.2f, egg._y));
+        egg._model->Draw(*_shader, eggPos);
+    }
+
+    for (auto it = _eggRenderPositions.begin(); it != _eggRenderPositions.end();) {
+        if (state.findEgg(it->first) == nullptr)
+            it = _eggRenderPositions.erase(it);
+        else
+            ++it;
     }
 }
 
@@ -267,7 +306,10 @@ void Renderer::renderTile(Tile& tile, float x, float z)
     if (tile.textureIndex == -1)
         tile.textureIndex = rand() % 5;
 
-    _tileMesh->textures[0].id = _groundTextures[tile.textureIndex];
+    const bool outlined = _showOutlinedGround || isSelectedTile(static_cast<int>(x), static_cast<int>(z));
+    const std::vector<GLuint> &textures = outlined ? _outlinedGroundTextures : _groundTextures;
+
+    _tileMesh->textures[0].id = textures[tile.textureIndex];
     _tileMesh->Draw(*_shader);
 
     processResources(tile);
@@ -339,7 +381,7 @@ void Renderer::initPlayersModels(GameState& state)
     for (auto& [id, player] : state.getPlayers()) {
         _playersModels.insert({
             id,
-            getModel(getTeamModel(player, state), glm::vec3(0.25f))
+            createPlayerModel(player, state)
         });
     }
 }
@@ -357,16 +399,74 @@ void Renderer::uptPlayerModel(int playerId, std::shared_ptr<Model> &playerModel,
         );
         _playerAnimations[playerId] = player->_animation;
         _playerAnimationTimers[playerId] = getAnimationDuration(player->_animation);
+        player->_animation = "idle";
     } else {
-        cleanupPlayerModel(playerId);
+        auto it = _playerRenderPositions.find(playerId);
+        if (it == _playerRenderPositions.end()
+            || static_cast<int>(std::floor(it->second.x)) != player->_x
+            || static_cast<int>(std::floor(it->second.z)) != player->_y) {
+            _playerRenderPositions[playerId] = getTileRandPos(glm::vec3(player->_x, 0.f, player->_y));
+        }
+        playerModel->moveTo(
+            _playerRenderPositions[playerId],
+            getPlayerRotation(player->_orientation)
+        );
+        if (_playerAnimations[playerId] != "Death") {
+            _playerAnimations[playerId] = "Death";
+            _playerAnimationTimers[playerId] = getAnimationDuration("Death");
+        }
+        player->_animation = "idle";
     }
 }
 
 void Renderer::cleanupPlayerModel(int playerId)
 {
     _playersModels.erase(playerId);
+    _playerRenderPositions.erase(playerId);
     _playerAnimations.erase(playerId);
     _playerAnimationTimers.erase(playerId);
+}
+
+bool Renderer::isSelectedTile(int x, int z) const
+{
+    return _selectedTile && _selectedTile->x == x && _selectedTile->y == z;
+}
+
+std::optional<glm::vec3> Renderer::getGroundHitPoint(sf::Vector2i mousePosition) const
+{
+    const sf::Vector2u size = _window.getSize();
+
+    if (size.x == 0 || size.y == 0)
+        return std::nullopt;
+
+    const float x = (2.f * static_cast<float>(mousePosition.x)) / static_cast<float>(size.x) - 1.f;
+    const float y = 1.f - (2.f * static_cast<float>(mousePosition.y)) / static_cast<float>(size.y);
+    const glm::mat4 inverseViewProjection = glm::inverse(getProjectionMatrix() * _camera.getView());
+
+    glm::vec4 nearPoint = inverseViewProjection * glm::vec4(x, y, -1.f, 1.f);
+    glm::vec4 farPoint = inverseViewProjection * glm::vec4(x, y, 1.f, 1.f);
+    nearPoint /= nearPoint.w;
+    farPoint /= farPoint.w;
+
+    const glm::vec3 origin = glm::vec3(nearPoint);
+    const glm::vec3 direction = glm::normalize(glm::vec3(farPoint - nearPoint));
+
+    if (std::abs(direction.y) < 0.0001f)
+        return std::nullopt;
+
+    const float distance = -origin.y / direction.y;
+    if (distance < 0.f)
+        return std::nullopt;
+    return origin + direction * distance;
+}
+
+glm::mat4 Renderer::getProjectionMatrix() const
+{
+    const sf::Vector2u size = _window.getSize();
+    const float height = size.y == 0 ? 1.f : static_cast<float>(size.y);
+    const float aspect = static_cast<float>(size.x) / height;
+
+    return glm::perspective(glm::radians(45.f), aspect, 0.1f, 100.f);
 }
 
 const sf::VideoMode& Renderer::getVideoMode() const
@@ -374,12 +474,12 @@ const sf::VideoMode& Renderer::getVideoMode() const
     return _videoMode;
 }
 
-const sf::Window& Renderer::getWindow() const
+const sf::RenderWindow& Renderer::getWindow() const
 {
     return _window;
 }
 
-sf::Window& Renderer::getWindow()
+sf::RenderWindow& Renderer::getWindow()
 {
     return _window;
 }
@@ -396,18 +496,27 @@ glm::vec3 Renderer::getTileCenter(const Tile& tile)
 
 glm::vec3 Renderer::getTileRandPos(const Tile& tile)
 {
-    float offsetX = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-    float offsetZ = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+    float offsetX = 0.1f + (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 0.8f;
+    float offsetZ = 0.1f + (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 0.8f;
 
     return {tile.x + offsetX, 0.f, tile.z + offsetZ};
 }
 
 glm::vec3 Renderer::getTileRandPos(glm::vec3 tilePos)
 {
-    float offsetX = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-    float offsetZ = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+    float offsetX = 0.1f + (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 0.8f;
+    float offsetZ = 0.1f + (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 0.8f;
 
     return {tilePos.x + offsetX, tilePos.y, tilePos.z + offsetZ};
+}
+
+std::shared_ptr<Model> Renderer::createPlayerModel(const Player& player, const GameState& state)
+{
+    return std::make_shared<Model>(
+        getTeamModel(player, state),
+        glm::vec3(0.f, 0.f, 0.f),
+        glm::vec3(0.25f)
+    );
 }
 
 std::shared_ptr<Model> Renderer::getModel(const std::string &path, glm::vec3 scale)
@@ -425,115 +534,4 @@ std::string Renderer::makeModelCacheKey(const std::string &path, const glm::vec3
 
     key << path << ':' << scale.x << ':' << scale.y << ':' << scale.z;
     return key.str();
-}
-
-unsigned int Renderer::loadCubemap(std::vector<std::string> faces)
-{
-    unsigned int textureID;
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
-
-    for (unsigned int i = 0; i < faces.size(); i++)
-    {
-        sf::Image image;
-
-        if (!image.loadFromFile(faces[i]))
-        {
-            std::cout << "Failed to load: " << faces[i] << std::endl;
-            continue;
-        }
-
-        glTexImage2D(
-            GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
-            0,
-            GL_RGBA,
-            image.getSize().x,
-            image.getSize().y,
-            0,
-            GL_RGBA,
-            GL_UNSIGNED_BYTE,
-            image.getPixelsPtr()
-        );
-    }
-
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-    return textureID;
-}
-
-void Renderer::initCubemap()
-{
-    float skyboxVertices[] =
-    {
-        -1.0f,  1.0f, -1.0f,
-        -1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-
-        -1.0f, -1.0f,  1.0f,
-        -1.0f, -1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,
-
-         1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-
-        -1.0f, -1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f, -1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,
-
-        -1.0f,  1.0f, -1.0f,
-         1.0f,  1.0f, -1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f, -1.0f,
-
-        -1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f,  1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f,  1.0f,
-         1.0f, -1.0f,  1.0f
-    };
-
-    glGenVertexArrays(1, &skyboxVAO);
-    glGenBuffers(1, &skyboxVBO);
-
-    glBindVertexArray(skyboxVAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
-    glBufferData(
-        GL_ARRAY_BUFFER,
-        sizeof(skyboxVertices),
-        skyboxVertices,
-        GL_STATIC_DRAW
-    );
-
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(
-        0,
-        3,
-        GL_FLOAT,
-        GL_FALSE,
-        3 * sizeof(float),
-        (void*)0
-    );
-
-    glBindVertexArray(0);
 }

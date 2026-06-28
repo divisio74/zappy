@@ -8,7 +8,7 @@ class Gui {
         ~Gui();
 
         void run();
-        Renderer&        getRenderer();
+        IRenderer&       getRenderer();
         GameState&       getState();
         NetworkProtocol& getNetwork();
 
