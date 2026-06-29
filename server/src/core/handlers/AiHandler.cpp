@@ -248,14 +248,18 @@ void AiHandler::run()
         auto now = std::chrono::steady_clock::now();
         if (action.executeAt < now) {
             queue.pop();
-            executeCommand(id, action.command);
+            executeCommand(id, action);
         }
     }
 }
 
-void AiHandler::executeCommand(size_t playerId, const std::string &command)
+void AiHandler::executeCommand(size_t playerId, const playerAction &action)
 {
     Player &player = findPlayer(playerId);
+    const auto remainingWaitTime = player.getWaitTime() - action.time.count();
+
+    player.setWaitTime(std::max<std::chrono::milliseconds::rep>(0, remainingWaitTime));
+    auto command = action.command;
 
     if (command == "Forward")     return execForward(player);
     if (command == "Right")       return execRight(player);
@@ -354,19 +358,23 @@ void AiHandler::enqueueCommand(Player &player, const std::string &command)
         }
     }
 
-    auto ms = std::chrono::milliseconds{
+    auto time = cost * 1000 / _world.freq;
+    auto waitTime = player.getWaitTime();
+    auto actionDuration = std::chrono::milliseconds{
         static_cast<std::chrono::milliseconds::rep>(
-            cost * 1000 / _world.freq
+            time
         )
     };
-    auto executeAt = std::chrono::steady_clock::now() + ms;
+    auto executeAt = std::chrono::steady_clock::now()
+        + std::chrono::milliseconds(waitTime) + actionDuration;
 
     playerAction action{
         command,
         executeAt,
-        ms
+        actionDuration
     };
 
+    player.setWaitTime(waitTime + time);
     player.getPlayerAction().push(action);
 }
 

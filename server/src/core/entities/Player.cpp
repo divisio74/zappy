@@ -14,7 +14,8 @@ Player::Player(Vector2 coordinate, Direction direction, std::size_t id, std::siz
     : _coordinate(coordinate),
       _direction(direction),
       _id(id),
-      _teamId(teamId)
+      _teamId(teamId),
+      _waitTime(0)
 {
 }
 
@@ -71,6 +72,16 @@ std::size_t Player::getId() const
 std::size_t Player::getTeamId() const
 {
     return _teamId;
+}
+
+std::chrono::milliseconds::rep Player::getWaitTime() const
+{
+    return _waitTime;
+}
+
+void Player::setWaitTime(std::chrono::milliseconds::rep time)
+{
+    _waitTime = time;
 }
 
 void Player::addRessource(ResourceType type)

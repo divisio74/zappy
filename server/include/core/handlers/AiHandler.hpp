@@ -26,7 +26,7 @@ public:
 
 private:
     void enqueueCommand(Player& player, const std::string& command);
-    void executeCommand(size_t playerId, const std::string& command);
+    void executeCommand(size_t playerId, const playerAction& command);
 
     Player& findPlayer(size_t playerId) const;
     Vector2 normalizePos(Vector2) const;

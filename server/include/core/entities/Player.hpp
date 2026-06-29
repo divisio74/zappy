@@ -46,11 +46,14 @@ public:
     std::queue<playerAction>& getPlayerAction();
     std::size_t getId() const;
     std::size_t getTeamId() const;
+    std::chrono::milliseconds::rep getWaitTime() const;
+    void setWaitTime(std::chrono::milliseconds::rep time);
 
     void addRessource(ResourceType type);
 
 private:
     std::queue<playerAction> _actionQueue;
+    std::chrono::milliseconds::rep _waitTime;
     Vector2 _coordinate;
     Inventory _inventory;
     Direction _direction = Direction::North;
