@@ -35,6 +35,26 @@ private:
 
     void queueGuiEvent(const GuiEvent &event);
 
+    static bool getResourceType(const std::string &name, ResourceType &type);
+    static bool removeResourceFromWorld(
+        std::vector<std::shared_ptr<Ressource>> &tileResources,
+        std::vector<std::shared_ptr<Ressource>> &worldResources,
+        ResourceType type);
+    static bool consumeResources(
+        std::vector<std::shared_ptr<Ressource>> &tileResources,
+        std::vector<std::shared_ptr<Ressource>> &worldResources,
+        ResourceType type,
+        int quantity);
+    static bool removeResourceFromInventory(Inventory &inventory, ResourceType type);
+    static std::size_t getNextResourceId(
+        const std::vector<std::shared_ptr<Ressource>> &resources);
+    static int getWrappedDelta(int from, int to, int size);
+    static int getAbsoluteSector(int dx, int dy);
+    static int getBroadcastDirection(const Player &receiver, const Player &sender,
+        const Vector2 &worldSize);
+    static int getDirectionFromPosition(const Player &receiver,
+        const Vector2 &source, const Vector2 &worldSize);
+
     void execForward(Player& player);
     void execRight(Player& player);
     void execLeft(Player& player);

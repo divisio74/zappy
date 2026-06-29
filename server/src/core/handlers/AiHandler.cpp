@@ -5,8 +5,7 @@
 #include <string>
 #include <sstream>
 
-namespace {
-bool getResourceType(const std::string &name, ResourceType &type)
+bool AiHandler::getResourceType(const std::string &name, ResourceType &type)
 {
     if (name == "food")
         type = ResourceType::Food;
@@ -27,7 +26,7 @@ bool getResourceType(const std::string &name, ResourceType &type)
     return true;
 }
 
-bool removeResourceFromWorld(
+bool AiHandler::removeResourceFromWorld(
     std::vector<std::shared_ptr<Ressource>> &tileResources,
     std::vector<std::shared_ptr<Ressource>> &worldResources,
     ResourceType type)
@@ -49,7 +48,7 @@ bool removeResourceFromWorld(
     return true;
 }
 
-bool consumeResources(
+bool AiHandler::consumeResources(
     std::vector<std::shared_ptr<Ressource>> &tileResources,
     std::vector<std::shared_ptr<Ressource>> &worldResources,
     ResourceType type,
@@ -62,7 +61,7 @@ bool consumeResources(
     return true;
 }
 
-bool removeResourceFromInventory(Inventory &inventory, ResourceType type)
+bool AiHandler::removeResourceFromInventory(Inventory &inventory, ResourceType type)
 {
     int *quantity = nullptr;
 
@@ -95,7 +94,8 @@ bool removeResourceFromInventory(Inventory &inventory, ResourceType type)
     return true;
 }
 
-std::size_t getNextResourceId(const std::vector<std::shared_ptr<Ressource>> &resources)
+std::size_t AiHandler::getNextResourceId(
+    const std::vector<std::shared_ptr<Ressource>> &resources)
 {
     std::size_t nextId = 0;
 
@@ -104,7 +104,7 @@ std::size_t getNextResourceId(const std::vector<std::shared_ptr<Ressource>> &res
     return nextId;
 }
 
-int getWrappedDelta(int from, int to, int size)
+int AiHandler::getWrappedDelta(int from, int to, int size)
 {
     int delta = to - from;
 
@@ -117,7 +117,7 @@ int getWrappedDelta(int from, int to, int size)
     return delta;
 }
 
-int getAbsoluteSector(int dx, int dy)
+int AiHandler::getAbsoluteSector(int dx, int dy)
 {
     if (dx == 0 && dy < 0)
         return 0;
@@ -136,7 +136,8 @@ int getAbsoluteSector(int dx, int dy)
     return 7;
 }
 
-int getBroadcastDirection(const Player &receiver, const Player &sender, const Vector2 &worldSize)
+int AiHandler::getBroadcastDirection(const Player &receiver, const Player &sender,
+    const Vector2 &worldSize)
 {
     const int dx = getWrappedDelta(receiver.getCoordinate().x, sender.getCoordinate().x, worldSize.x);
     const int dy = getWrappedDelta(receiver.getCoordinate().y, sender.getCoordinate().y, worldSize.y);
@@ -149,7 +150,7 @@ int getBroadcastDirection(const Player &receiver, const Player &sender, const Ve
     return ((absoluteSector - receiverFrontSector + 8) % 8) + 1;
 }
 
-int getDirectionFromPosition(const Player &receiver, const Vector2 &source,
+int AiHandler::getDirectionFromPosition(const Player &receiver, const Vector2 &source,
     const Vector2 &worldSize)
 {
     const int dx = getWrappedDelta(receiver.getCoordinate().x, source.x, worldSize.x);
@@ -161,8 +162,6 @@ int getDirectionFromPosition(const Player &receiver, const Vector2 &source,
     const int absoluteSector = getAbsoluteSector(dx, dy);
     const int receiverFrontSector = (8 - static_cast<int>(receiver.getDirection()) * 2) % 8;
     return ((absoluteSector - receiverFrontSector + 8) % 8) + 1;
-}
-
 }
 
 const std::unordered_map<std::string, int> AiHandler::ACTION_COSTS = {
