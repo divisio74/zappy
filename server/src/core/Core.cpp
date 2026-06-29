@@ -75,6 +75,8 @@ void Core::processClientCommands(std::size_t socketId)
     std::vector<std::string> commands = _socketRegistry.read(socketId);
 
     for (const std::string &command : commands) {
+        if (!_socketRegistry.hasSocket(socketId))
+            return;
         switch (_socketRegistry.getSocketState(socketId)) {
         case SocketRegistry::SocketState::Unknown:
             identifyClient(socketId, command);
@@ -122,6 +124,10 @@ void Core::processAiClientCommand(std::size_t socketId,
 
     if (!businessId.has_value())
         return;
+    if (_worldData.players.find(businessId.value()) == _worldData.players.end()) {
+        _socketRegistry.removeSocket(socketId);
+        return;
+    }
 
     std::vector<std::string> commands = {command};
 
@@ -204,6 +210,12 @@ void Core::killPlayer(std::size_t playerId)
         return;
     _aiHandler.addMessage(playerId, "dead");
     sendAiMessages();
+
+    std::optional<std::size_t> socketId =
+        _socketRegistry.getSocketIdByBusinessId(playerId);
+
+    if (socketId.has_value())
+        _socketRegistry.removeSocket(socketId.value());
 
     auto team = _worldData.teams.find(player->second.getTeamId());
 

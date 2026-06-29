@@ -26,6 +26,7 @@ public:
         std::size_t maxClients);
 
     void removeSocket(std::size_t socketId);
+    bool hasSocket(std::size_t socketId) const;
     std::vector<std::size_t> pollSockets(int timeoutMs);
     std::vector<std::size_t> getNewConnections();
 

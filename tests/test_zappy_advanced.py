@@ -394,6 +394,15 @@ class PlayerDeathTests(unittest.TestCase):
             self.assertEqual(wait_for_pattern(ai, r"dead", DEATH_TIMEOUT), "dead",
                              "starving AI should receive 'dead'")
 
+    def test_dead_ai_socket_is_closed(self):
+        with ZappyServer(freq=FREQ) as server:
+            ai, _, _ = server.connect_ai("teamA")
+            self.addCleanup(ai.close)
+            self.assertEqual(wait_for_pattern(ai, r"dead", DEATH_TIMEOUT), "dead")
+            send_line(ai, "Inventory")
+            self.assertEqual(read_line(ai, timeout=1.0), "<closed>",
+                             "dead AI should be removed from the network")
+
     def test_dead_player_ppo_is_sbp(self):
         with ZappyServer(freq=FREQ) as server:
             gui = server.connect_gui()
@@ -680,6 +689,22 @@ class OfficialAdvancedComparisonTests(unittest.TestCase):
             matched = wait_for_pattern(ai, r"dead", DEATH_TIMEOUT)
             ai.close()
             return {"received_dead": matched == "dead"}
+
+        self.assert_same(run_on_both(scenario))
+
+    def test_death_closes_ai_socket_matches(self):
+        def scenario(server):
+            ai, _, _ = server.connect_ai("teamA")
+            matched = wait_for_pattern(ai, r"dead", DEATH_TIMEOUT)
+            send_line(ai, "Inventory")
+            after_death = read_line(ai, timeout=1.0)
+            alive = server.proc.poll() is None
+            ai.close()
+            return {
+                "received_dead": matched == "dead",
+                "after_death": after_death,
+                "server_alive": alive,
+            }
 
         self.assert_same(run_on_both(scenario))
 

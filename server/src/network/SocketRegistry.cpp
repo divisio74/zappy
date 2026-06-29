@@ -1,5 +1,6 @@
 #include "network/SocketRegistry.hpp"
 
+#include <algorithm>
 #include <poll.h>
 #include <stdexcept>
 #include <utility>
@@ -26,7 +27,16 @@ void SocketRegistry::removeSocket(std::size_t socketId)
     std::size_t index = getIndex(socketId);
 
     _sockets.erase(_sockets.begin() + index);
+    _newConnections.erase(std::remove(_newConnections.begin(), _newConnections.end(),
+        socketId), _newConnections.end());
+    _lostConnections.erase(std::remove(_lostConnections.begin(), _lostConnections.end(),
+        socketId), _lostConnections.end());
     refreshIndexes();
+}
+
+bool SocketRegistry::hasSocket(std::size_t socketId) const
+{
+    return _indexById.find(socketId) != _indexById.end();
 }
 
 std::vector<std::size_t> SocketRegistry::pollSockets(int timeoutMs)
