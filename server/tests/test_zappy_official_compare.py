@@ -10,11 +10,10 @@ from contextlib import closing
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
-OFFICIAL_SERVER = Path(os.environ.get(
-    "OFFICIAL_SERVER_BIN", ROOT / "zappy_server_official")).resolve()
-MINE_SERVER = Path(os.environ.get("MINE_SERVER_BIN", ROOT / "zappy_server")).resolve()
-GUI_BIN = Path(os.environ.get("ZAPPY_GUI_BIN", ROOT / "zappy_gui")).resolve()
+ROOT = Path(__file__).resolve().parents[2]
+OFFICIAL_SERVER = Path(ROOT / "binaries" / "zappy_server_official").resolve()
+MINE_SERVER = Path(ROOT / "zappy_server").resolve()
+GUI_BIN = Path(ROOT / "zappy_gui").resolve()
 
 WIDTH = 10
 HEIGHT = 10

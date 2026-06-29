@@ -9,9 +9,9 @@ from contextlib import closing
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SERVER = ROOT / "zappy_server"
-SERVER_BIN = Path(os.environ.get("ZAPPY_SERVER_BIN", DEFAULT_SERVER)).resolve()
+SERVER_BIN = Path(DEFAULT_SERVER).resolve()
 ROOT_SERVER_BIN = ROOT / "zappy_server"
 GUI_BIN = ROOT / "zappy_gui"
 

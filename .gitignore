@@ -6,6 +6,7 @@
 *.dll
 *.exe
 zappy_server
+zappy_gui
 
 # Debug and coverage files
 *.gcda
