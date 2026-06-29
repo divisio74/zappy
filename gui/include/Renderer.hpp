@@ -47,7 +47,7 @@ class Renderer : public IRenderer {
         void renderTile(Tile& tile, float x, float z);
         std::unique_ptr<Mesh> initTile();
         void initPlayersModels(GameState& state);
-        void uptPlayerModel(int playerID, std::shared_ptr<Model> &playerModel, GameState& state);
+        void uptPlayerModel(int playerID, std::shared_ptr<Model> &playerModel, GameState& state, float deltaTime);
         glm::vec3 getTileCenter (const Tile& tile);
         glm::vec3 getTileRandPos(const Tile& tile);
         glm::vec3 getTileRandPos(glm::vec3 tilePos);

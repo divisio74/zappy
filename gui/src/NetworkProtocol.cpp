@@ -59,7 +59,7 @@ static int getAnimationPriority(const std::string &animation)
 {
     if (animation == "Death")
         return 100;
-    if (animation == "kick" || animation == "Dance" || animation == "pickup")
+    if (animation == "kick" || animation == "Dance" || animation == "pickup" || animation == "hello")
         return 50;
     if (animation == "walk")
         return 10;
@@ -216,8 +216,11 @@ void NetworkProtocol::parseMessage(const std::string &line, GameState &state)
         int id = std::stoi(idstr.substr(1));
         Player *player = state.findPlayer(id);
         std::string teamName = idstr;
-        if (player != nullptr)
+        if (player != nullptr) {
             teamName = player->_teamName;
+            setPlayerAnimation(*player, "hello");
+            state.addPlayerToUpdate(player->_id);
+        }
         state.addBroadcast(teamName, message);
 }
 
