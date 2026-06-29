@@ -58,14 +58,6 @@ static std::string getTeamModel(const Player &player, const GameState &state)
         return "gui/model/FlamMech.glb";
     case 3:
         return "gui/model/FoxMech.glb";
-    case 0:
-        return "gui/model/FrogMech.glb";
-    case 1:
-        return "gui/model/BeeMech.glb";
-    case 2:
-        return "gui/model/FlamMech.glb";
-    case 3:
-        return "gui/model/FoxMech.glb";
     default:
         return "gui/model/FrogMech.glb";
     }
