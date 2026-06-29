@@ -23,6 +23,8 @@ bool NetworkBase::connect(const std::string &host, int port)
         return false;
     }
     _socket->write("GRAPHIC");
+    _socket->write("msz");
+    _socket->write("mct");
     _connected = true;
     std::cout << "NetworkBase: connecté au serveur Zappy\n";
     return true;
